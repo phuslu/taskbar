@@ -74,6 +74,7 @@ BEGIN
     IDS_TOOLTIP             "this is a tooltip"
     IDS_TITLE               "taskbar.exe"
     IDS_BALLOON             "this is ballon tooltip"
+    IDS_VISIBLE             "visible"
 END
 
 #endif    // Chinese (P.R.C.) resources

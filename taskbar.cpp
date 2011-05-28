@@ -22,6 +22,7 @@ TCHAR szWindowClass[MAX_LOADSTRING] = L"taskbar";
 TCHAR szCommandLine[MAX_LOADSTRING] = L"";
 TCHAR szTooltip[MAX_LOADSTRING] = L"";
 TCHAR szBalloon[MAX_LOADSTRING] = L"";
+TCHAR szVisible[MAX_LOADSTRING] = L"";
 
 BOOL ShowTrayIcon()
 {
@@ -30,16 +31,17 @@ BOOL ShowTrayIcon()
 	nid.cbSize = (DWORD)sizeof(NOTIFYICONDATA);
 	nid.hWnd   = hWnd;
 	nid.uID	   = NID_UID;
-	nid.uFlags = NIF_ICON|NIF_MESSAGE|NIF_TIP|NIF_INFO;
+	nid.uFlags = NIF_ICON|NIF_MESSAGE|NIF_TIP;
 	nid.dwInfoFlags=NIIF_INFO;
-	nid.uCallbackMessage = WM_TASKBARNOTIFY;    
-	//nid.dwState = NIS_SHAREDICON;
-    //nid.dwStateMask = NIS_SHAREDICON;
-    //nid.uTimeout=5000; 	
+	nid.uCallbackMessage = WM_TASKBARNOTIFY;	
 	nid.hIcon = LoadIcon(hInst, (LPCTSTR)IDI_SMALL);
 	lstrcpy(nid.szTip, szTooltip);
-    lstrcpy(nid.szInfo, szBalloon);  
-    lstrcpy(nid.szInfoTitle,szTitle);
+    if (lstrlen(szBalloon) > 0)
+	{
+		nid.uFlags |= NIF_INFO;
+		lstrcpy(nid.szInfo, szBalloon);
+		lstrcpy(nid.szInfoTitle,szTitle);
+	}
 	Shell_NotifyIcon(NIM_ADD, &nid);
 	return TRUE;
 }
@@ -139,6 +141,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    LoadString(hInst, IDS_CMDLINE, szCommandLine, sizeof(szCommandLine)/sizeof(szCommandLine[0])-1);
    LoadString(hInst, IDS_TOOLTIP, szTooltip, sizeof(szTooltip)/sizeof(szTooltip[0])-1);
    LoadString(hInst, IDS_BALLOON, szBalloon, sizeof(szBalloon)/sizeof(szBalloon[0])-1);
+   LoadString(hInst, IDS_VISIBLE, szVisible, sizeof(szVisible)/sizeof(szVisible[0])-1);
 
    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPED|WS_SYSMENU,
       NULL, NULL, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
@@ -169,7 +172,14 @@ BOOL CreateConsole()
 	_wfreopen(L"CONIN$",  L"r+t", stdin);
 	_wfreopen(L"CONOUT$", L"w+t", stdout);
 	hConsole = GetConsoleWindow();
-	SetForegroundWindow(hConsole);
+	if (lstrcmp(szVisible, L"visible") == 0)
+	{
+		SetForegroundWindow(hConsole);
+	}
+	else
+	{
+		ShowWindow(hConsole, SW_HIDE);
+	}
 	return TRUE;
 }
 
