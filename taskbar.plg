@@ -6,12 +6,12 @@
 --------------------Configuration: taskbar - Win32 Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSPC8.tmp" with contents
+Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP63.tmp" with contents
 [
 /nologo /ML /W3 /GX /O1 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_UNICODE" /D "UNICODE" /Fo"Release/" /Fd"Release/" /FD /c 
 "D:\Develop\taskbar\taskbar.cpp"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSPC8.tmp" 
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP63.tmp" 
 Creating command line "link.exe kernel32.lib user32.lib SHELL32.LIB /nologo /subsystem:windows /pdb:none /machine:I386 /out:"Release/taskbar.exe"  .\Release\StdAfx.obj .\Release\taskbar.obj .\Release\taskbar.res "
 <h3>Output Window</h3>
 Compiling...

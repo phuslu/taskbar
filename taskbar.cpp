@@ -172,13 +172,13 @@ BOOL CreateConsole()
 	_wfreopen(L"CONIN$",  L"r+t", stdin);
 	_wfreopen(L"CONOUT$", L"w+t", stdout);
 	hConsole = GetConsoleWindow();
-	if (lstrcmp(szVisible, L"visible") == 0)
+	if (lstrcmp(szVisible, L"") == 0 || lstrcmp(szVisible, L"0") == 0)
 	{
-		SetForegroundWindow(hConsole);
+		ShowWindow(hConsole, SW_HIDE);
 	}
 	else
 	{
-		ShowWindow(hConsole, SW_HIDE);
+		SetForegroundWindow(hConsole);
 	}
 	return TRUE;
 }
