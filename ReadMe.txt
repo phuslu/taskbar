@@ -1,35 +1,5 @@
-========================================================================
-       WIN32 APPLICATION : taskbar
-========================================================================
-
-
-AppWizard has created this taskbar application for you.  
-
-This file contains a summary of what you will find in each of the files that
-make up your taskbar application.
-
-taskbar.cpp
-    This is the main application source file.
-
-taskbar.dsp
-    This file (the project file) contains information at the project level and
-    is used to build a single project or subproject. Other users can share the
-    project (.dsp) file, but they should export the makefiles locally.
-	
-
-/////////////////////////////////////////////////////////////////////////////
-Other standard files:
-
-StdAfx.h, StdAfx.cpp
-    These files are used to build a precompiled header (PCH) file
-    named taskbar.pch and a precompiled types file named StdAfx.obj.
-
-
-/////////////////////////////////////////////////////////////////////////////
-Other notes:
-
-AppWizard uses "TODO:" to indicate parts of the source code you
-should add to or customize.
-
-
-/////////////////////////////////////////////////////////////////////////////
+下载 https://github.com/goagent/taskbar/archive/master.zip
+然后用 vc6 打开 taskbar.dsw, 点"编译"得到 taskbar.exe
+此时的 taskbar.exe 是 cmd.exe 的一个外壳
+用 reshack/exesope 修改 taskbar.exe 的图标资源和字符串资源就能得到自定义的任意 console 程序的外壳了
+比如 goagent.exe
