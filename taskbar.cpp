@@ -64,6 +64,7 @@ BOOL ShowPopupMenu()
     AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_HIDE, L"\x9690\x85cf");
     AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_EXIT, L"\x9000\x51fa");
     GetCursorPos(&pt);
+    SetForegroundWindow(hWnd);
     TrackPopupMenu(hMenu, TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
     PostMessage(hWnd, WM_NULL, 0, 0);
     DestroyMenu(hMenu);
