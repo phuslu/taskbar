@@ -23,6 +23,7 @@ TCHAR szCommandLine[MAX_LOADSTRING] = L"";
 TCHAR szTooltip[MAX_LOADSTRING] = L"";
 TCHAR szBalloon[MAX_LOADSTRING] = L"";
 TCHAR szVisible[MAX_LOADSTRING] = L"";
+TCHAR szEnvironment[MAX_LOADSTRING] = L"";
 
 BOOL ShowTrayIcon()
 {
@@ -142,6 +143,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    LoadString(hInst, IDS_TOOLTIP, szTooltip, sizeof(szTooltip)/sizeof(szTooltip[0])-1);
    LoadString(hInst, IDS_BALLOON, szBalloon, sizeof(szBalloon)/sizeof(szBalloon[0])-1);
    LoadString(hInst, IDS_VISIBLE, szVisible, sizeof(szVisible)/sizeof(szVisible[0])-1);
+   LoadString(hInst, IDS_ENVIRONMENT, szEnvironment, sizeof(szEnvironment)/sizeof(szEnvironment[0])-1);
 
    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPED|WS_SYSMENU,
       NULL, NULL, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
@@ -163,6 +165,25 @@ BOOL CDCurrentDirectory()
 	GetModuleFileName(NULL, szPath, sizeof(szPath)/sizeof(szPath[0])-1);
 	*wcsrchr(szPath, L'\\') = 0;
 	SetCurrentDirectory(szPath);
+	return TRUE;
+}
+
+BOOL SetEenvironment()
+{
+	TCHAR *sep = L"\n";
+	TCHAR *token = wcstok(szEnvironment, sep);
+	while(token!=NULL)
+	{
+		TCHAR *pos = wcschr(token, L'=');
+		if (pos)
+		{
+			*pos = 0;
+			TCHAR* key = token;
+			TCHAR* value = pos + 1;
+			SetEnvironmentVariableW(key, value);
+		}
+		token = wcstok(NULL, sep);
+	}
 	return TRUE;
 }
 
@@ -213,6 +234,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	}
 	CreateConsole();
 	CDCurrentDirectory();
+	SetEenvironment();
 	ExecCmdline();
 	ShowTrayIcon();
 	while (GetMessage(&msg, NULL, 0, 0)) 
