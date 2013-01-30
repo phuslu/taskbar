@@ -22,7 +22,6 @@ TCHAR szWindowClass[MAX_LOADSTRING] = L"taskbar";
 TCHAR szCommandLine[MAX_LOADSTRING] = L"";
 TCHAR szTooltip[MAX_LOADSTRING] = L"";
 TCHAR szBalloon[MAX_LOADSTRING] = L"";
-TCHAR szVisible[MAX_LOADSTRING] = L"";
 TCHAR szEnvironment[MAX_LOADSTRING] = L"";
 
 BOOL ShowTrayIcon()
@@ -142,7 +141,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    LoadString(hInst, IDS_CMDLINE, szCommandLine, sizeof(szCommandLine)/sizeof(szCommandLine[0])-1);
    LoadString(hInst, IDS_TOOLTIP, szTooltip, sizeof(szTooltip)/sizeof(szTooltip[0])-1);
    LoadString(hInst, IDS_BALLOON, szBalloon, sizeof(szBalloon)/sizeof(szBalloon[0])-1);
-   LoadString(hInst, IDS_VISIBLE, szVisible, sizeof(szVisible)/sizeof(szVisible[0])-1);
    LoadString(hInst, IDS_ENVIRONMENT, szEnvironment, sizeof(szEnvironment)/sizeof(szEnvironment[0])-1);
 
    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPED|WS_SYSMENU,
@@ -171,16 +169,15 @@ BOOL CDCurrentDirectory()
 BOOL SetEenvironment()
 {
 	TCHAR *sep = L"\n";
+	TCHAR *pos = NULL;
 	TCHAR *token = wcstok(szEnvironment, sep);
-	while(token!=NULL)
+	while(token != NULL)
 	{
-		TCHAR *pos = wcschr(token, L'=');
-		if (pos)
+		if (pos = wcschr(token, L'='))
 		{
 			*pos = 0;
-			TCHAR* key = token;
-			TCHAR* value = pos + 1;
-			SetEnvironmentVariableW(key, value);
+			SetEnvironmentVariableW(token, pos+1);
+			// wprintf(L"[%s] = [%s]\n", token, pos+1);
 		}
 		token = wcstok(NULL, sep);
 	}
@@ -189,11 +186,14 @@ BOOL SetEenvironment()
 
 BOOL CreateConsole()
 {
+	TCHAR szVisible[BUFSIZ] = L"";
+
 	AllocConsole();
 	_wfreopen(L"CONIN$",  L"r+t", stdin);
 	_wfreopen(L"CONOUT$", L"w+t", stdout);
 	hConsole = GetConsoleWindow();
-	if (lstrcmp(szVisible, L"") == 0 || lstrcmp(szVisible, L"0") == 0)
+	
+	if (GetEnvironmentVariableW(L"VISIBLE", szVisible, BUFSIZ-1) && szVisible[0] == L'0')
 	{
 		ShowWindow(hConsole, SW_HIDE);
 	}
@@ -232,9 +232,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	{
 		return FALSE;
 	}
+	SetEenvironment();
 	CreateConsole();
 	CDCurrentDirectory();
-	SetEenvironment();
 	ExecCmdline();
 	ShowTrayIcon();
 	while (GetMessage(&msg, NULL, 0, 0)) 
