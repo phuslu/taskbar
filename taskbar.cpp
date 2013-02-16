@@ -10,13 +10,14 @@ extern "C" WINBASEAPI HWND WINAPI GetConsoleWindow();
 #define MAX_LOADSTRING 1024
 #define NID_UID 123
 #define WM_TASKBARNOTIFY WM_USER+20
-#define WM_TASKBARNOTIFY_MENUITEM_SHOW WM_USER + 21
-#define WM_TASKBARNOTIFY_MENUITEM_HIDE WM_USER + 22
+#define WM_TASKBARNOTIFY_MENUITEM_RELOAD WM_USER + 21
+#define WM_TASKBARNOTIFY_MENUITEM_ABOUT WM_USER + 22
 #define WM_TASKBARNOTIFY_MENUITEM_EXIT WM_USER + 23
 
 HINSTANCE hInst;
 HWND hWnd;
-HWND hConsole;					
+HWND hConsole;
+HANDLE hChildren;					
 TCHAR szTitle[MAX_LOADSTRING] = L"";
 TCHAR szWindowClass[MAX_LOADSTRING] = L"taskbar";
 TCHAR szCommandLine[MAX_LOADSTRING] = L"";
@@ -60,78 +61,14 @@ BOOL ShowPopupMenu()
 {
     POINT pt;
     HMENU hMenu = CreatePopupMenu();
-    AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_SHOW, L"\x663e\x793a");
-    AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_HIDE, L"\x9690\x85cf");
-    AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_EXIT, L"\x9000\x51fa");
+    AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_RELOAD, L"\x91cd\x65b0\x8f7d\x5165");
+    AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_ABOUT,  L"\x5173\x4e8e");
+    AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_EXIT,   L"\x9000\x51fa");
     GetCursorPos(&pt);
     TrackPopupMenu(hMenu, TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
     PostMessage(hWnd, WM_NULL, 0, 0);
     DestroyMenu(hMenu);
 	return TRUE;
-}
-
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	int nID;
-	switch (message) 
-	{
-		case WM_TASKBARNOTIFY:
-			if (lParam == WM_LBUTTONUP)
-			{
-				ShowWindow(hConsole, !IsWindowVisible(hConsole));
-				SetForegroundWindow(hConsole);
-			}
-			else if (lParam == WM_RBUTTONUP)
-			{
-				ShowPopupMenu();
-			}
-			break;
-		case WM_COMMAND:
-			nID = LOWORD(wParam);
-			if (nID == WM_TASKBARNOTIFY_MENUITEM_SHOW)
-			{
-				ShowWindow(hConsole, SW_SHOW);
-				SetForegroundWindow(hConsole);
-			}
-			else if (nID == WM_TASKBARNOTIFY_MENUITEM_HIDE)
-			{
-				ShowWindow(hConsole, SW_HIDE);
-			}
-			else if (nID == WM_TASKBARNOTIFY_MENUITEM_EXIT)
-			{
-				DeleteTrayIcon();
-				PostMessage(hConsole, WM_CLOSE, 0, 0);
-			}
-			break;
-		case WM_DESTROY:
-			PostQuitMessage(0);
-			break;
-		default:
-			return DefWindowProc(hWnd, message, wParam, lParam);
-   }
-   return 0;
-}
-
-
-ATOM MyRegisterClass(HINSTANCE hInstance)
-{
-	WNDCLASSEX wcex;
-
-	wcex.cbSize = sizeof(WNDCLASSEX); 
-
-	wcex.style			= CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc	= (WNDPROC)WndProc;
-	wcex.cbClsExtra		= 0;
-	wcex.cbWndExtra		= 0;
-	wcex.hInstance		= hInstance;
-	wcex.hIcon			= LoadIcon(hInstance, (LPCTSTR)IDI_TASKBAR);
-	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW+1);
-	wcex.lpszMenuName	= (LPCTSTR)NULL;
-	wcex.lpszClassName	= szWindowClass;
-	wcex.hIconSm		= LoadIcon(wcex.hInstance, (LPCTSTR)IDI_SMALL);
-
-	return RegisterClassEx(&wcex);
 }
 
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
@@ -214,14 +151,83 @@ BOOL ExecCmdline()
 	BOOL bRet = CreateProcess(NULL, szCommandLine, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
 	if(bRet)
 	{
-		CloseHandle(pi.hThread);
-		CloseHandle(pi.hProcess);
+		hChildren = pi.hProcess;
 	}
 	else
 	{
 		wprintf(L"ExecCmdline \"%s\" failed!\n", szCommandLine);
+		CloseHandle(pi.hThread);
+		CloseHandle(pi.hProcess);
 	}
 	return TRUE;
+}
+
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	int nID;
+	switch (message) 
+	{
+		case WM_TASKBARNOTIFY:
+			if (lParam == WM_LBUTTONUP)
+			{
+				ShowWindow(hConsole, !IsWindowVisible(hConsole));
+				SetForegroundWindow(hConsole);
+			}
+			else if (lParam == WM_RBUTTONUP)
+			{
+				ShowPopupMenu();
+			}
+			break;
+		case WM_COMMAND:
+			nID = LOWORD(wParam);
+			if (nID == WM_TASKBARNOTIFY_MENUITEM_RELOAD)
+			{
+				TerminateProcess(hChildren, 0);
+				ShowWindow(hConsole, SW_SHOW);
+				SetForegroundWindow(hConsole);
+				wprintf(L"\n\n");
+				Sleep(200);
+				ExecCmdline();
+			}
+			else if (nID == WM_TASKBARNOTIFY_MENUITEM_ABOUT)
+			{
+				MessageBoxW(hWnd, szTooltip, szWindowClass, 0);
+			}
+			else if (nID == WM_TASKBARNOTIFY_MENUITEM_EXIT)
+			{
+				DeleteTrayIcon();
+				PostMessage(hConsole, WM_CLOSE, 0, 0);
+			}
+			break;
+		case WM_DESTROY:
+			PostQuitMessage(0);
+			break;
+		default:
+			return DefWindowProc(hWnd, message, wParam, lParam);
+   }
+   return 0;
+}
+
+ATOM MyRegisterClass(HINSTANCE hInstance)
+{
+	WNDCLASSEX wcex;
+
+	wcex.cbSize = sizeof(WNDCLASSEX); 
+
+	wcex.style			= CS_HREDRAW | CS_VREDRAW;
+	wcex.lpfnWndProc	= (WNDPROC)WndProc;
+	wcex.cbClsExtra		= 0;
+	wcex.cbWndExtra		= 0;
+	wcex.hInstance		= hInstance;
+	wcex.hIcon			= LoadIcon(hInstance, (LPCTSTR)IDI_TASKBAR);
+	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
+	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW+1);
+	wcex.lpszMenuName	= (LPCTSTR)NULL;
+	wcex.lpszClassName	= szWindowClass;
+	wcex.hIconSm		= LoadIcon(wcex.hInstance, (LPCTSTR)IDI_SMALL);
+
+	return RegisterClassEx(&wcex);
 }
 
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmdShow)
