@@ -10,9 +10,11 @@ extern "C" WINBASEAPI HWND WINAPI GetConsoleWindow();
 #define MAX_LOADSTRING 1024
 #define NID_UID 123
 #define WM_TASKBARNOTIFY WM_USER+20
-#define WM_TASKBARNOTIFY_MENUITEM_RELOAD WM_USER + 21
-#define WM_TASKBARNOTIFY_MENUITEM_ABOUT WM_USER + 22
-#define WM_TASKBARNOTIFY_MENUITEM_EXIT WM_USER + 23
+#define WM_TASKBARNOTIFY_MENUITEM_SHOW WM_USER + 21
+#define WM_TASKBARNOTIFY_MENUITEM_HIDE WM_USER + 22
+#define WM_TASKBARNOTIFY_MENUITEM_RELOAD WM_USER + 23
+#define WM_TASKBARNOTIFY_MENUITEM_ABOUT WM_USER + 24
+#define WM_TASKBARNOTIFY_MENUITEM_EXIT WM_USER + 25
 
 HINSTANCE hInst;
 HWND hWnd;
@@ -61,8 +63,10 @@ BOOL ShowPopupMenu()
 {
     POINT pt;
     HMENU hMenu = CreatePopupMenu();
+    AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_SHOW, L"\x663e\x793a"); 	
+    AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_HIDE, L"\x9690\x85cf");
     AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_RELOAD, L"\x91cd\x65b0\x8f7d\x5165");
-    AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_ABOUT,  L"\x5173\x4e8e");
+    // AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_ABOUT,  L"\x5173\x4e8e");
     AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_EXIT,   L"\x9000\x51fa");
     GetCursorPos(&pt);
     TrackPopupMenu(hMenu, TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
@@ -181,6 +185,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case WM_COMMAND:
 			nID = LOWORD(wParam);
+			if (nID == WM_TASKBARNOTIFY_MENUITEM_SHOW)
+			{
+				ShowWindow(hConsole, SW_SHOW);
+				SetForegroundWindow(hConsole);
+			}
+			else if (nID == WM_TASKBARNOTIFY_MENUITEM_HIDE)
+			{
+				ShowWindow(hConsole, SW_HIDE);
+			}
 			if (nID == WM_TASKBARNOTIFY_MENUITEM_RELOAD)
 			{
 				TerminateProcess(hChildren, 0);
