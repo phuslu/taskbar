@@ -296,7 +296,9 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 void WatchdogThreadEntryPoint(void* args)
 {
 	WCHAR szMemoryLimit[BUFSIZ] = L"0";
+	WCHAR szMemoryLimitInterval[BUFSIZ] = L"60";
 	DWORD dwMemoryLimit = 0;
+	DWORD dwMemoryLimitInterval = 60;
 	PROCESS_MEMORY_COUNTERS pmc;
 
 	if (!GetEnvironmentVariableW(L"MEMORY_LIMIT", szMemoryLimit, BUFSIZ-1))
@@ -325,9 +327,14 @@ void WatchdogThreadEntryPoint(void* args)
 			break;
 	}
 
+	if (GetEnvironmentVariableW(L"MEMORY_LIMIT_INTERVAL", szMemoryLimitInterval, BUFSIZ-1))
+	{
+		dwMemoryLimitInterval = _wtoi(szMemoryLimitInterval);;
+	}
+
 	while (1)
 	{
-		Sleep(1 * 1000);
+		Sleep(dwMemoryLimitInterval * 1000);
 		HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwChildrenPid);
 		if (hProcess)
 		{

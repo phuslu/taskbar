@@ -120,7 +120,7 @@ BEGIN
     IDS_TOOLTIP             "this is a tooltip"
     IDS_TITLE               "taskbar.exe"
     IDS_BALLOON             "this is ballon tooltip"
-    IDS_ENVIRONMENT         "VISIBLE=0\nGEVENT_RESOLVER=block\nMEMORY_LIMIT=1000M"
+    IDS_ENVIRONMENT         "VISIBLE=0\nGEVENT_RESOLVER=block\nMEMORY_LIMIT=512M\nMEMORY_LIMIT_INTERVAL=60"
 END
 
 #endif    // Chinese (P.R.C.) resources
