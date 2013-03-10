@@ -3,7 +3,11 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <stdio.h>
+#include <process.h>
+#include <psapi.h>
 #include "resource.h"
+
+#pragma comment (lib, "psapi.lib" )
 
 extern "C" WINBASEAPI HWND WINAPI GetConsoleWindow();
 
@@ -19,13 +23,50 @@ extern "C" WINBASEAPI HWND WINAPI GetConsoleWindow();
 HINSTANCE hInst;
 HWND hWnd;
 HWND hConsole;
-HANDLE hChildren;					
 TCHAR szTitle[MAX_LOADSTRING] = L"";
 TCHAR szWindowClass[MAX_LOADSTRING] = L"taskbar";
 TCHAR szCommandLine[MAX_LOADSTRING] = L"";
 TCHAR szTooltip[MAX_LOADSTRING] = L"";
 TCHAR szBalloon[MAX_LOADSTRING] = L"";
 TCHAR szEnvironment[MAX_LOADSTRING] = L"";
+volatile DWORD dwChildrenPid;
+
+static DWORD GetProcessId(HANDLE hProcess)
+{
+	// https://gist.github.com/kusma/268888
+	typedef DWORD (WINAPI *pfnGPI)(HANDLE);
+	typedef ULONG (WINAPI *pfnNTQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
+ 
+	static int first = 1;
+	static pfnGPI GetProcessId;
+	static pfnNTQIP ZwQueryInformationProcess;
+	if (first)
+	{
+		first = 0;
+		GetProcessId = (pfnGPI)GetProcAddress(
+		    GetModuleHandleW(L"KERNEL32.DLL"), "GetProcessId");
+		if (!GetProcessId)
+			ZwQueryInformationProcess = (pfnNTQIP)GetProcAddress(
+			    GetModuleHandleW(L"NTDLL.DLL"),
+			    "ZwQueryInformationProcess");
+	}
+	if (GetProcessId)
+		return GetProcessId(hProcess);
+	if (ZwQueryInformationProcess)
+	{
+		struct
+		{
+			PVOID Reserved1;
+			PVOID PebBaseAddress;
+			PVOID Reserved2[2];
+			ULONG UniqueProcessId;
+			PVOID Reserved3;
+		} pbi;
+		ZwQueryInformationProcess(hProcess, 0, &pbi, sizeof(pbi), 0);
+		return pbi.UniqueProcessId;
+	}
+	return 0;
+}
 
 BOOL ShowTrayIcon()
 {
@@ -155,17 +196,31 @@ BOOL ExecCmdline()
 	BOOL bRet = CreateProcess(NULL, szCommandLine, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
 	if(bRet)
 	{
-		hChildren = pi.hProcess;
+		dwChildrenPid = GetProcessId(pi.hProcess);
 	}
 	else
 	{
 		wprintf(L"ExecCmdline \"%s\" failed!\n", szCommandLine);
-		CloseHandle(pi.hThread);
-		CloseHandle(pi.hProcess);
 	}
+	CloseHandle(pi.hThread);
+	CloseHandle(pi.hProcess);
 	return TRUE;
 }
 
+BOOL ReloadCmdline()
+{
+	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwChildrenPid);
+	if (hProcess)
+	{
+		TerminateProcess(hProcess, 0);
+	}
+	ShowWindow(hConsole, SW_SHOW);
+	SetForegroundWindow(hConsole);
+	wprintf(L"\n\n");
+	Sleep(200);
+	ExecCmdline();
+	return TRUE;
+}
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -196,12 +251,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			if (nID == WM_TASKBARNOTIFY_MENUITEM_RELOAD)
 			{
-				TerminateProcess(hChildren, 0);
-				ShowWindow(hConsole, SW_SHOW);
-				SetForegroundWindow(hConsole);
-				wprintf(L"\n\n");
-				Sleep(200);
-				ExecCmdline();
+				ReloadCmdline();
 			}
 			else if (nID == WM_TASKBARNOTIFY_MENUITEM_ABOUT)
 			{
@@ -243,6 +293,56 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	return RegisterClassEx(&wcex);
 }
 
+void WatchdogThreadEntryPoint(void* args)
+{
+	WCHAR szMemoryLimit[BUFSIZ] = L"0";
+	DWORD dwMemoryLimit = 0;
+	PROCESS_MEMORY_COUNTERS pmc;
+
+	if (!GetEnvironmentVariableW(L"MEMORY_LIMIT", szMemoryLimit, BUFSIZ-1))
+	{
+		return;
+	}
+	dwMemoryLimit = _wtoi(szMemoryLimit);
+	if (dwMemoryLimit == 0)
+	{
+		return;
+	}
+	switch (szMemoryLimit[lstrlen(szMemoryLimit)-1])
+	{
+		case 'K':
+		case 'k':
+			dwMemoryLimit *= 1024;
+			break;
+		case 'M':
+		case 'm':
+			dwMemoryLimit *= 1024*1024;
+			break;
+		case 'G':
+		case 'g':
+			dwMemoryLimit *= 1024*1024*1024;
+		default:
+			break;
+	}
+
+	while (1)
+	{
+		Sleep(1 * 1000);
+		HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwChildrenPid);
+		if (hProcess)
+		{
+			GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc));
+			if (pmc.WorkingSetSize > dwMemoryLimit)
+			{
+				SetConsoleTextAttribute(GetStdHandle(-11), 0x04);
+				wprintf(L"\n\ndwChildrenPid=%d WorkingSetSize=%d large than szMemoryLimit=%s, restart.\n\n", dwChildrenPid, pmc.WorkingSetSize, szMemoryLimit);
+				SetConsoleTextAttribute(GetStdHandle(-11), 0x07);
+				ReloadCmdline();
+			}
+		}
+	}
+}
+
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmdShow)
 {
 	MSG msg;
@@ -256,6 +356,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	CDCurrentDirectory();
 	ExecCmdline();
 	ShowTrayIcon();
+	_beginthread(WatchdogThreadEntryPoint, 0, NULL);
 	while (GetMessage(&msg, NULL, 0, 0)) 
 	{
 		TranslateMessage(&msg);
