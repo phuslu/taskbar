@@ -6,11 +6,6 @@
 --------------------Configuration: taskbar - Win32 Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating command line "rc.exe /l 0x409 /fo"Release/taskbar.res" /d "NDEBUG" "D:\Develop\taskbar\taskbar.rc"" 
-Creating command line "link.exe kernel32.lib user32.lib SHELL32.LIB /nologo /subsystem:windows /pdb:none /machine:I386 /out:"Release/taskbar.exe"  .\Release\StdAfx.obj .\Release\taskbar.obj .\Release\taskbar.res "
-<h3>Output Window</h3>
-Compiling resources...
-Linking...
 
 
 

@@ -88,7 +88,7 @@ BEGIN
         BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "goagent.org\0"
-            VALUE "FileDescription", "taskbar\0"
+            VALUE "FileDescription", "https://github.com/goagent/taskbar\0"
             VALUE "FileVersion", "1, 0, 0, 0\0"
             VALUE "InternalName", "taskbar\0"
             VALUE "LegalCopyright", "MIT\0"

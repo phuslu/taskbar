@@ -4,7 +4,7 @@
 #include <shellapi.h>
 #include <stdio.h>
 #include <process.h>
-#include <psapi.h>
+#include "psapi.h"
 #include "resource.h"
 
 #pragma comment (lib, "psapi.lib" )
