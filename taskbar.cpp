@@ -3,7 +3,6 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <stdio.h>
-#include <process.h>
 #include "psapi.h"
 #include "resource.h"
 
@@ -222,6 +221,53 @@ BOOL ReloadCmdline()
 	return TRUE;
 }
 
+void CheckMemoryLimit()
+{
+	WCHAR szMemoryLimit[BUFSIZ] = L"0";
+	DWORD dwMemoryLimit = 0;
+	PROCESS_MEMORY_COUNTERS pmc;
+
+	if (!GetEnvironmentVariableW(L"MEMORY_LIMIT", szMemoryLimit, BUFSIZ-1))
+	{
+		return;
+	}
+	dwMemoryLimit = _wtoi(szMemoryLimit);
+	if (dwMemoryLimit == 0)
+	{
+		return;
+	}
+	switch (szMemoryLimit[lstrlen(szMemoryLimit)-1])
+	{
+		case 'K':
+		case 'k':
+			dwMemoryLimit *= 1024;
+			break;
+		case 'M':
+		case 'm':
+			dwMemoryLimit *= 1024*1024;
+			break;
+		case 'G':
+		case 'g':
+			dwMemoryLimit *= 1024*1024*1024;
+		default:
+			break;
+	}
+
+	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwChildrenPid);
+	if (hProcess)
+	{
+		GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc));
+		CloseHandle(hProcess);
+		if (pmc.WorkingSetSize > dwMemoryLimit)
+		{
+			SetConsoleTextAttribute(GetStdHandle(-11), 0x04);
+			wprintf(L"\n\ndwChildrenPid=%d WorkingSetSize=%d large than szMemoryLimit=%s, restart.\n\n", dwChildrenPid, pmc.WorkingSetSize, szMemoryLimit);
+			SetConsoleTextAttribute(GetStdHandle(-11), 0x07);
+			ReloadCmdline();
+		}
+	}
+}
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	int nID;
@@ -263,6 +309,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				PostMessage(hConsole, WM_CLOSE, 0, 0);
 			}
 			break;
+		case WM_TIMER:
+			CheckMemoryLimit();
+			break;
 		case WM_DESTROY:
 			PostQuitMessage(0);
 			break;
@@ -293,63 +342,6 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	return RegisterClassEx(&wcex);
 }
 
-void WatchdogThreadEntryPoint(void* args)
-{
-	WCHAR szMemoryLimit[BUFSIZ] = L"0";
-	WCHAR szMemoryLimitInterval[BUFSIZ] = L"60";
-	DWORD dwMemoryLimit = 0;
-	DWORD dwMemoryLimitInterval = 60;
-	PROCESS_MEMORY_COUNTERS pmc;
-
-	if (!GetEnvironmentVariableW(L"MEMORY_LIMIT", szMemoryLimit, BUFSIZ-1))
-	{
-		return;
-	}
-	dwMemoryLimit = _wtoi(szMemoryLimit);
-	if (dwMemoryLimit == 0)
-	{
-		return;
-	}
-	switch (szMemoryLimit[lstrlen(szMemoryLimit)-1])
-	{
-		case 'K':
-		case 'k':
-			dwMemoryLimit *= 1024;
-			break;
-		case 'M':
-		case 'm':
-			dwMemoryLimit *= 1024*1024;
-			break;
-		case 'G':
-		case 'g':
-			dwMemoryLimit *= 1024*1024*1024;
-		default:
-			break;
-	}
-
-	if (GetEnvironmentVariableW(L"MEMORY_LIMIT_INTERVAL", szMemoryLimitInterval, BUFSIZ-1))
-	{
-		dwMemoryLimitInterval = _wtoi(szMemoryLimitInterval);;
-	}
-
-	while (1)
-	{
-		Sleep(dwMemoryLimitInterval * 1000);
-		HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwChildrenPid);
-		if (hProcess)
-		{
-			GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc));
-			if (pmc.WorkingSetSize > dwMemoryLimit)
-			{
-				SetConsoleTextAttribute(GetStdHandle(-11), 0x04);
-				wprintf(L"\n\ndwChildrenPid=%d WorkingSetSize=%d large than szMemoryLimit=%s, restart.\n\n", dwChildrenPid, pmc.WorkingSetSize, szMemoryLimit);
-				SetConsoleTextAttribute(GetStdHandle(-11), 0x07);
-				ReloadCmdline();
-			}
-		}
-	}
-}
-
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmdShow)
 {
 	MSG msg;
@@ -363,7 +355,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	CDCurrentDirectory();
 	ExecCmdline();
 	ShowTrayIcon();
-	_beginthread(WatchdogThreadEntryPoint, 0, NULL);
+	SetTimer(hWnd, 0, 30 * 1000, NULL);
 	while (GetMessage(&msg, NULL, 0, 0)) 
 	{
 		TranslateMessage(&msg);
