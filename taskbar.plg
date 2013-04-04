@@ -7,15 +7,32 @@
 </h3>
 <h3>Command Lines</h3>
 Creating command line "rc.exe /l 0x409 /fo"Release/taskbar.res" /d "NDEBUG" "D:\Develop\taskbar\taskbar.rc"" 
-Creating command line "link.exe kernel32.lib user32.lib SHELL32.LIB /nologo /subsystem:windows /pdb:none /machine:I386 /out:"Release/taskbar.exe"  .\Release\StdAfx.obj .\Release\taskbar.obj .\Release\taskbar.res "
+Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSPAF1.tmp" with contents
+[
+/nologo /ML /W3 /GX /O1 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_UNICODE" /D "UNICODE" /Fp"Release/taskbar.pch" /Yc"stdafx.h" /Fo"Release/" /Fd"Release/" /FD /c 
+"D:\Develop\taskbar\StdAfx.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSPAF1.tmp" 
+Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSPAF2.tmp" with contents
+[
+/nologo /ML /W3 /GX /O1 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_UNICODE" /D "UNICODE" /Fo"Release/" /Fd"Release/" /FD /c 
+"D:\Develop\taskbar\taskbar.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSPAF2.tmp" 
+Creating command line "link.exe kernel32.lib user32.lib /nologo /subsystem:windows /pdb:none /machine:I386 /out:"Release/taskbar.exe"  .\Release\StdAfx.obj .\Release\taskbar.obj .\Release\taskbar.res "
 <h3>Output Window</h3>
 Compiling resources...
+Compiling...
+StdAfx.cpp
+Compiling...
+taskbar.cpp
 Linking...
+LINK : warning LNK4078: multiple ".data" sections found with different attributes (60000020)
 
 
 
 <h3>Results</h3>
-taskbar.exe - 0 error(s), 0 warning(s)
+taskbar.exe - 0 error(s), 1 warning(s)
 </pre>
 </body>
 </html>
