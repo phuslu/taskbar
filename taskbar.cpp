@@ -121,6 +121,7 @@ LPCTSTR GetWindowsProxy()
 									  &hKey))
 	{
 		szProxy[0] = 0;
+		dwSize = sizeof(szProxy)/sizeof(szProxy[0]);
 		RegQueryValueExW(hKey, L"AutoConfigURL", NULL, 0, (LPBYTE)&szProxy, &dwSize);
 		if (wcslen(szProxy))
 			return szProxy;
