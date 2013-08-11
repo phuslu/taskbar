@@ -35,6 +35,7 @@ TCHAR szBalloon[512] = L"";
 TCHAR szEnvironment[1024] = L"";
 TCHAR szProxyString[2048] = L"";
 TCHAR *lpProxyList[10] = {0};
+TCHAR lpszExtraInterfaces[8][64];
 volatile DWORD dwChildrenPid;
 
 static DWORD GetProcessId(HANDLE hProcess)
@@ -103,6 +104,36 @@ BOOL DeleteTrayIcon()
 	nid.hWnd   = hWnd;
 	nid.uID	   = NID_UID;
 	Shell_NotifyIcon(NIM_DELETE, &nid);
+	return TRUE;
+}
+
+
+BOOL EnumExtraInterfaces()
+{
+    HKEY hKey;
+
+    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
+		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Connections",
+									  0,
+									  KEY_READ | KEY_WRITE, 
+									  &hKey))
+	{
+		int index = 0;
+		for (int i = 0; i < sizeof(lpszExtraInterfaces)/sizeof(lpszExtraInterfaces[0]); i++)
+		{
+			TCHAR szName[sizeof(lpszExtraInterfaces[i])/sizeof(lpszExtraInterfaces[i][0])] = {0};
+			DWORD dwLength = sizeof(szName)/sizeof(szName[0]);
+			RegEnumValue(hKey, i, szName, &dwLength, NULL, NULL, 0, NULL);
+			if (wcslen(szName) == 0)
+				break;
+			else if (wcscmp(szName, L"DefaultConnectionSettings") && wcscmp(szName, L"SavedLegacySettings"))
+				wcscpy(lpszExtraInterfaces[index++], szName);
+			
+		}
+		lpszExtraInterfaces[index][0] = 0;
+		RegCloseKey(hKey);
+	}
+	
 	return TRUE;
 }
 
@@ -479,6 +510,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	CDCurrentDirectory();
 	ExecCmdline();
 	ShowTrayIcon();
+	EnumExtraInterfaces();
 	SetTimer(hWnd, 0, 30 * 1000, NULL);
 	while (GetMessage(&msg, NULL, 0, 0))
 	{
