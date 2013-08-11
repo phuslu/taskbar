@@ -156,7 +156,7 @@ BOOL SetWindowsProxy(int n)
 			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
 			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)L"", 2);
 		}
-		else if (wcsstr(szProxy, L".pac") != NULL)
+		else if (wcsstr(szProxy, L"://") != NULL)
 		{
 			DWORD dwData = 1;
 			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
