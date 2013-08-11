@@ -1,6 +1,7 @@
 #define _WIN32_IE 0x0500
 
 #include <windows.h>
+#include <wininet.h>
 #include <shellapi.h>
 #include <stdio.h>
 #include <io.h>
@@ -9,6 +10,8 @@
 
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "psapi.lib")
+#pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "wininet.lib")
 
 extern "C" WINBASEAPI HWND WINAPI GetConsoleWindow();
 
@@ -251,7 +254,32 @@ BOOL ReloadCmdline()
 
 BOOL SetWindowsProxy(int n)
 {
-	MessageBoxW(NULL, lpProxyList[n], L"set proxy", 0);
+	TCHAR * szProxy = lpProxyList[n];
+    HKEY hKey;
+
+    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
+		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
+									  0,
+									  KEY_READ | KEY_WRITE, 
+									  &hKey))
+	{
+		if (wcsstr(szProxy, L".pac") != NULL)
+		{
+			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)(DWORD)1, sizeof(REG_DWORD));
+			RegSetValueExW(hKey, L"ProxyOverride", 0, REG_SZ, (LPBYTE)L"<local>", 16);
+			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)szProxy, (lstrlen(szProxy)+1)*sizeof(TCHAR));
+		}
+		else
+		{
+			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)(DWORD)1, sizeof(REG_DWORD));
+			RegSetValueExW(hKey, L"ProxyOverride", 0, REG_SZ, (LPBYTE)L"<local>", 16);
+			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)L"", 2);
+			RegSetValueExW(hKey, L"ProxyServer", 0, REG_SZ, (LPBYTE)szProxy, (lstrlen(szProxy)+1)*sizeof(TCHAR));
+		}
+		InternetSetOptionW(0, INTERNET_OPTION_REFRESH, 0, 0);
+		InternetSetOptionW(0, INTERNET_OPTION_SETTINGS_CHANGED, 0, 0);
+    }
+
 	return TRUE;
 }
 
