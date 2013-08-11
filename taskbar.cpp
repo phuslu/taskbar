@@ -124,18 +124,27 @@ LPCTSTR GetWindowsProxy()
 		dwSize = sizeof(szProxy)/sizeof(szProxy[0]);
 		RegQueryValueExW(hKey, L"AutoConfigURL", NULL, 0, (LPBYTE)&szProxy, &dwSize);
 		if (wcslen(szProxy))
+		{
+			RegCloseKey(hKey);
 			return szProxy;
+		}
 		dwData = 0;
 		RegQueryValueExW(hKey, L"ProxyEnable", NULL, 0, (LPBYTE)&dwData, &dwSize);
 		if (dwData == 0)
+		{
+			RegCloseKey(hKey);
 			return L"";
+		}
 		szProxy[0] = 0;
 		dwSize = sizeof(szProxy)/sizeof(szProxy[0]);
 		RegQueryValueExW(hKey, L"ProxyServer", NULL, 0, (LPBYTE)&szProxy, &dwSize);
 		if (wcslen(szProxy))
+		{
+			RegCloseKey(hKey);
 			return szProxy;
+		}
     }
-	return NULL;
+	return szProxy;
 }
 
 

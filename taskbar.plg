@@ -6,9 +6,6 @@
 --------------------Configuration: taskbar - Win32 Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating command line "link.exe kernel32.lib user32.lib /nologo /subsystem:windows /pdb:none /machine:I386 /out:"Release/taskbar.exe"  .\Release\StdAfx.obj .\Release\taskbar.obj .\Release\taskbar.res "
-<h3>Output Window</h3>
-Linking...
 
 
 
