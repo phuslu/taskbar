@@ -111,7 +111,7 @@ BOOL ShowPopupMenu()
 	POINT pt;
 	HMENU hSubMenu = CreatePopupMenu();
 	for (int i = 0; lpProxyList[i]; i++)
-		AppendMenu(hSubMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE+i, lpProxyList[i]);
+		AppendMenu(hSubMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE+i, wcslen(lpProxyList[i])?lpProxyList[i]:L"\x7981\x7528\x4ee3\x7406");
 
 	HMENU hMenu = CreatePopupMenu();
 	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_SHOW, L"\x663e\x793a"); 	
@@ -131,6 +131,7 @@ BOOL ParseProxyList()
 	TCHAR *sep = L"\n";
 	TCHAR *pos = wcstok(szProxyString, sep);
 	INT i = 0;
+	lpProxyList[i++] = L"";
 	while (pos && i < sizeof(lpProxyList)/sizeof(lpProxyList[0]))
 	{
 		lpProxyList[i++] = pos;
@@ -263,15 +264,23 @@ BOOL SetWindowsProxy(int n)
 									  KEY_READ | KEY_WRITE, 
 									  &hKey))
 	{
-		if (wcsstr(szProxy, L".pac") != NULL)
+		if (wcslen(szProxy) == 0)
 		{
-			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)(DWORD)1, sizeof(REG_DWORD));
+			DWORD dwData = 0;
+			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
+			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)L"", 2);
+		}
+		else if (wcsstr(szProxy, L".pac") != NULL)
+		{
+			DWORD dwData = 1;
+			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
 			RegSetValueExW(hKey, L"ProxyOverride", 0, REG_SZ, (LPBYTE)L"<local>", 16);
 			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)szProxy, (lstrlen(szProxy)+1)*sizeof(TCHAR));
 		}
 		else
 		{
-			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)(DWORD)1, sizeof(REG_DWORD));
+			DWORD dwData = 1;
+			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
 			RegSetValueExW(hKey, L"ProxyOverride", 0, REG_SZ, (LPBYTE)L"<local>", 16);
 			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)L"", 2);
 			RegSetValueExW(hKey, L"ProxyServer", 0, REG_SZ, (LPBYTE)szProxy, (lstrlen(szProxy)+1)*sizeof(TCHAR));
