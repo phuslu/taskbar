@@ -8,6 +8,7 @@
 #define IDS_BALLOON                     4
 #define IDS_VISIBLE                     5
 #define IDS_ENVIRONMENT                 5
+#define IDS_PROXYLIST                   6
 #define IDI_ICON1                       101
 #define IDI_ICON2                       104
 #define IDI_TASKBAR                     105

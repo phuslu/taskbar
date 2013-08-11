@@ -133,6 +133,7 @@ BEGIN
     IDS_TITLE               "taskbar.exe"
     IDS_BALLOON             "this is ballon tooltip"
     IDS_ENVIRONMENT         "VISIBLE=0\nGEVENT_RESOLVER=block\nMEMORY_LIMIT=256M"
+    IDS_PROXYLIST           "http://127.0.0.1:8086/proxy.pac\n127.0.0.1:8087\n"
 END
 
 #endif    // Chinese (P.R.C.) resources

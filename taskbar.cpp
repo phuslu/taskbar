@@ -9,19 +9,17 @@
 
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "psapi.lib")
-#pragma comment(linker, "/ALIGN:4096")
-#pragma comment(linker,"/MERGE:.text=.data")
-#pragma comment(linker,"/ENTRY:main")
 
 extern "C" WINBASEAPI HWND WINAPI GetConsoleWindow();
 
 #define NID_UID 123
 #define WM_TASKBARNOTIFY WM_USER+20
-#define WM_TASKBARNOTIFY_MENUITEM_SHOW WM_USER + 21
-#define WM_TASKBARNOTIFY_MENUITEM_HIDE WM_USER + 22
-#define WM_TASKBARNOTIFY_MENUITEM_RELOAD WM_USER + 23
-#define WM_TASKBARNOTIFY_MENUITEM_ABOUT WM_USER + 24
-#define WM_TASKBARNOTIFY_MENUITEM_EXIT WM_USER + 25
+#define WM_TASKBARNOTIFY_MENUITEM_SHOW (WM_USER + 21)
+#define WM_TASKBARNOTIFY_MENUITEM_HIDE (WM_USER + 22)
+#define WM_TASKBARNOTIFY_MENUITEM_RELOAD (WM_USER + 23)
+#define WM_TASKBARNOTIFY_MENUITEM_ABOUT (WM_USER + 24)
+#define WM_TASKBARNOTIFY_MENUITEM_EXIT (WM_USER + 25)
+#define WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE (WM_USER + 26)
 
 HINSTANCE hInst;
 HWND hWnd;
@@ -32,6 +30,8 @@ TCHAR szCommandLine[1024] = L"";
 TCHAR szTooltip[512] = L"";
 TCHAR szBalloon[512] = L"";
 TCHAR szEnvironment[1024] = L"";
+TCHAR szProxyString[2048] = L"";
+TCHAR *lpProxyList[10] = {0};
 volatile DWORD dwChildrenPid;
 
 static DWORD GetProcessId(HANDLE hProcess)
@@ -106,16 +106,34 @@ BOOL DeleteTrayIcon()
 BOOL ShowPopupMenu()
 {
 	POINT pt;
+	HMENU hSubMenu = CreatePopupMenu();
+	for (int i = 0; lpProxyList[i]; i++)
+		AppendMenu(hSubMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE+i, lpProxyList[i]);
+
 	HMENU hMenu = CreatePopupMenu();
 	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_SHOW, L"\x663e\x793a"); 	
 	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_HIDE, L"\x9690\x85cf");
+	AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, L"\x8bbe\x7f6e IE \x4ee3\x7406");
 	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_RELOAD, L"\x91cd\x65b0\x8f7d\x5165");
-	// AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_ABOUT,  L"\x5173\x4e8e");
 	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_EXIT,   L"\x9000\x51fa");
 	GetCursorPos(&pt);
 	TrackPopupMenu(hMenu, TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
 	PostMessage(hWnd, WM_NULL, 0, 0);
 	DestroyMenu(hMenu);
+	return TRUE;
+}
+
+BOOL ParseProxyList()
+{
+	TCHAR *sep = L"\n";
+	TCHAR *pos = wcstok(szProxyString, sep);
+	INT i = 0;
+	while (pos && i < sizeof(lpProxyList)/sizeof(lpProxyList[0]))
+	{
+		lpProxyList[i++] = pos;
+		pos = wcstok (NULL, sep);
+	}
+	lpProxyList[i] = 0;
 	return TRUE;
 }
 
@@ -127,6 +145,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    LoadString(hInst, IDS_TOOLTIP, szTooltip, sizeof(szTooltip)/sizeof(szTooltip[0])-1);
    LoadString(hInst, IDS_BALLOON, szBalloon, sizeof(szBalloon)/sizeof(szBalloon[0])-1);
    LoadString(hInst, IDS_ENVIRONMENT, szEnvironment, sizeof(szEnvironment)/sizeof(szEnvironment[0])-1);
+   LoadString(hInst, IDS_PROXYLIST, szProxyString, sizeof(szProxyString)/sizeof(szProxyString[0])-1);
+
+   ParseProxyList();
 
    hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPED|WS_SYSMENU,
 	  NULL, NULL, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
@@ -162,7 +183,7 @@ BOOL SetEenvironment()
 		{
 			*pos = 0;
 			SetEnvironmentVariableW(token, pos+1);
-			// wprintf(L"[%s] = [%s]\n", token, pos+1);
+			//wprintf(L"[%s] = [%s]\n", token, pos+1);
 		}
 		token = wcstok(NULL, sep);
 	}
@@ -174,8 +195,8 @@ BOOL CreateConsole()
 	TCHAR szVisible[BUFSIZ] = L"";
 
 	AllocConsole();
-	//_wfreopen(L"CONIN$",  L"r+t", stdin);
-	//_wfreopen(L"CONOUT$", L"w+t", stdout);
+	_wfreopen(L"CONIN$",  L"r+t", stdin);
+	_wfreopen(L"CONOUT$", L"w+t", stdout);
 
 	hConsole = GetConsoleWindow();
 	
@@ -204,7 +225,7 @@ BOOL ExecCmdline()
 	}
 	else
 	{
-		// wprintf(L"ExecCmdline \"%s\" failed!\n", szCommandLine);
+		wprintf(L"ExecCmdline \"%s\" failed!\n", szCommandLine);
 		MessageBox(NULL, szCommandLine, L"Error: \x6267\x884c\x547d\x4ee4\x5931\x8d25!", MB_OK);
 		ExitProcess(0);
 	}
@@ -222,9 +243,15 @@ BOOL ReloadCmdline()
 	}
 	ShowWindow(hConsole, SW_SHOW);
 	SetForegroundWindow(hConsole);
-	//wprintf(L"\n\n");
+	wprintf(L"\n\n");
 	Sleep(200);
 	ExecCmdline();
+	return TRUE;
+}
+
+BOOL SetWindowsProxy(int n)
+{
+	MessageBoxW(NULL, lpProxyList[n], L"set proxy", 0);
 	return TRUE;
 }
 
@@ -268,7 +295,7 @@ void CheckMemoryLimit()
 		if (pmc.WorkingSetSize > dwMemoryLimit)
 		{
 			SetConsoleTextAttribute(GetStdHandle(-11), 0x04);
-			// wprintf(L"\n\ndwChildrenPid=%d WorkingSetSize=%d large than szMemoryLimit=%s, restart.\n\n", dwChildrenPid, pmc.WorkingSetSize, szMemoryLimit);
+			wprintf(L"\n\ndwChildrenPid=%d WorkingSetSize=%d large than szMemoryLimit=%s, restart.\n\n", dwChildrenPid, pmc.WorkingSetSize, szMemoryLimit);
 			SetConsoleTextAttribute(GetStdHandle(-11), 0x07);
 			ReloadCmdline();
 		}
@@ -314,6 +341,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				DeleteTrayIcon();
 				PostMessage(hConsole, WM_CLOSE, 0, 0);
+			}
+			else if (WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE <= nID && nID <= WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE+sizeof(lpProxyList)/sizeof(lpProxyList[0]))
+			{
+				SetWindowsProxy(nID-WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE);
 			}
 			break;
 		case WM_TIMER:
@@ -371,7 +402,3 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	return 0;
 }
 
-extern "C" void main()
-{
-	ExitProcess(wWinMain(GetModuleHandle(NULL), NULL, GetCommandLineW(), SW_SHOWNORMAL));
-}
