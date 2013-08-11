@@ -106,12 +106,91 @@ BOOL DeleteTrayIcon()
 	return TRUE;
 }
 
+
+LPCTSTR GetWindowsProxy()
+{
+	static TCHAR szProxy[1024] = {0};
+    HKEY hKey;
+
+    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
+		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
+									  0,
+									  KEY_READ | KEY_WRITE, 
+									  &hKey))
+	{
+		DWORD dwProxyEnabled = 0;
+		DWORD dwSize = sizeof(DWORD);
+		RegQueryValueExW(hKey, L"ProxyEnable", NULL, 0, (LPBYTE)&dwProxyEnabled, &dwSize);
+		if (dwProxyEnabled == 0)
+			return L"";
+		else
+		{
+			szProxy[0] = 0;
+			DWORD dwProxySize = sizeof(szProxy)/sizeof(szProxy[0]);
+			RegQueryValueExW(hKey, L"AutoConfigURL", NULL, 0, (LPBYTE)&szProxy, &dwProxySize);
+			if (wcslen(szProxy))
+				return szProxy;
+			RegQueryValueExW(hKey, L"ProxyServer", NULL, 0, (LPBYTE)&szProxy, &dwProxySize);
+			if (wcslen(szProxy))
+				return szProxy;
+		}
+    }
+	return NULL;
+}
+
+
+BOOL SetWindowsProxy(int n)
+{
+	TCHAR * szProxy = lpProxyList[n];
+    HKEY hKey;
+
+    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
+		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
+									  0,
+									  KEY_READ | KEY_WRITE, 
+									  &hKey))
+	{
+		if (wcslen(szProxy) == 0)
+		{
+			DWORD dwData = 0;
+			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
+			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)L"", 2);
+		}
+		else if (wcsstr(szProxy, L".pac") != NULL)
+		{
+			DWORD dwData = 1;
+			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
+			RegSetValueExW(hKey, L"ProxyOverride", 0, REG_SZ, (LPBYTE)L"<local>", 16);
+			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)szProxy, (lstrlen(szProxy)+1)*sizeof(TCHAR));
+		}
+		else
+		{
+			DWORD dwData = 1;
+			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
+			RegSetValueExW(hKey, L"ProxyOverride", 0, REG_SZ, (LPBYTE)L"<local>", 16);
+			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)L"", 2);
+			RegSetValueExW(hKey, L"ProxyServer", 0, REG_SZ, (LPBYTE)szProxy, (lstrlen(szProxy)+1)*sizeof(TCHAR));
+		}
+		RegCloseKey(hKey);
+		InternetSetOptionW(0, INTERNET_OPTION_REFRESH, 0, 0);
+		InternetSetOptionW(0, INTERNET_OPTION_SETTINGS_CHANGED, 0, 0);
+    }
+
+	return TRUE;
+}
+
+
 BOOL ShowPopupMenu()
 {
 	POINT pt;
 	HMENU hSubMenu = CreatePopupMenu();
+	LPCTSTR lpCurrentProxy = GetWindowsProxy();
 	for (int i = 0; lpProxyList[i]; i++)
-		AppendMenu(hSubMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE+i, wcslen(lpProxyList[i])?lpProxyList[i]:L"\x7981\x7528\x4ee3\x7406");
+	{
+		UINT uFlags = wcscmp(lpProxyList[i], lpCurrentProxy) == 0 ? MF_STRING | MF_CHECKED : MF_STRING;
+		LPCTSTR lpText = wcslen(lpProxyList[i]) ? lpProxyList[i] : L"\x7981\x7528\x4ee3\x7406";
+		AppendMenu(hSubMenu, uFlags, WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE+i, lpText);
+	}
 
 	HMENU hMenu = CreatePopupMenu();
 	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_SHOW, L"\x663e\x793a"); 	
@@ -250,45 +329,6 @@ BOOL ReloadCmdline()
 	wprintf(L"\n\n");
 	Sleep(200);
 	ExecCmdline();
-	return TRUE;
-}
-
-BOOL SetWindowsProxy(int n)
-{
-	TCHAR * szProxy = lpProxyList[n];
-    HKEY hKey;
-
-    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
-		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
-									  0,
-									  KEY_READ | KEY_WRITE, 
-									  &hKey))
-	{
-		if (wcslen(szProxy) == 0)
-		{
-			DWORD dwData = 0;
-			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
-			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)L"", 2);
-		}
-		else if (wcsstr(szProxy, L".pac") != NULL)
-		{
-			DWORD dwData = 1;
-			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
-			RegSetValueExW(hKey, L"ProxyOverride", 0, REG_SZ, (LPBYTE)L"<local>", 16);
-			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)szProxy, (lstrlen(szProxy)+1)*sizeof(TCHAR));
-		}
-		else
-		{
-			DWORD dwData = 1;
-			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
-			RegSetValueExW(hKey, L"ProxyOverride", 0, REG_SZ, (LPBYTE)L"<local>", 16);
-			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)L"", 2);
-			RegSetValueExW(hKey, L"ProxyServer", 0, REG_SZ, (LPBYTE)szProxy, (lstrlen(szProxy)+1)*sizeof(TCHAR));
-		}
-		InternetSetOptionW(0, INTERNET_OPTION_REFRESH, 0, 0);
-		InternetSetOptionW(0, INTERNET_OPTION_SETTINGS_CHANGED, 0, 0);
-    }
-
 	return TRUE;
 }
 
