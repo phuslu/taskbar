@@ -111,6 +111,8 @@ LPCTSTR GetWindowsProxy()
 {
 	static TCHAR szProxy[1024] = {0};
     HKEY hKey;
+	DWORD dwData = 0;
+	DWORD dwSize = sizeof(DWORD);
 
     if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
 		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
@@ -118,22 +120,19 @@ LPCTSTR GetWindowsProxy()
 									  KEY_READ | KEY_WRITE, 
 									  &hKey))
 	{
-		DWORD dwProxyEnabled = 0;
-		DWORD dwSize = sizeof(DWORD);
-		RegQueryValueExW(hKey, L"ProxyEnable", NULL, 0, (LPBYTE)&dwProxyEnabled, &dwSize);
-		if (dwProxyEnabled == 0)
+		szProxy[0] = 0;
+		RegQueryValueExW(hKey, L"AutoConfigURL", NULL, 0, (LPBYTE)&szProxy, &dwSize);
+		if (wcslen(szProxy))
+			return szProxy;
+		dwData = 0;
+		RegQueryValueExW(hKey, L"ProxyEnable", NULL, 0, (LPBYTE)&dwData, &dwSize);
+		if (dwData == 0)
 			return L"";
-		else
-		{
-			szProxy[0] = 0;
-			DWORD dwProxySize = sizeof(szProxy)/sizeof(szProxy[0]);
-			RegQueryValueExW(hKey, L"AutoConfigURL", NULL, 0, (LPBYTE)&szProxy, &dwProxySize);
-			if (wcslen(szProxy))
-				return szProxy;
-			RegQueryValueExW(hKey, L"ProxyServer", NULL, 0, (LPBYTE)&szProxy, &dwProxySize);
-			if (wcslen(szProxy))
-				return szProxy;
-		}
+		szProxy[0] = 0;
+		dwSize = sizeof(szProxy)/sizeof(szProxy[0]);
+		RegQueryValueExW(hKey, L"ProxyServer", NULL, 0, (LPBYTE)&szProxy, &dwSize);
+		if (wcslen(szProxy))
+			return szProxy;
     }
 	return NULL;
 }
@@ -158,7 +157,7 @@ BOOL SetWindowsProxy(int n)
 		}
 		else if (wcsstr(szProxy, L"://") != NULL)
 		{
-			DWORD dwData = 1;
+			DWORD dwData = 0;
 			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
 			RegSetValueExW(hKey, L"ProxyOverride", 0, REG_SZ, (LPBYTE)L"<local>", 16);
 			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)szProxy, (lstrlen(szProxy)+1)*sizeof(TCHAR));
