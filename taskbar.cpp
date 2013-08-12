@@ -14,31 +14,20 @@
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "wininet.lib")
 
-extern "C" WINBASEAPI HWND WINAPI GetConsoleWindow();
+#ifndef INTERNET_OPTION_PER_CONNECTION_OPTION
 
-#define NID_UID 123
-#define WM_TASKBARNOTIFY WM_USER+20
-#define WM_TASKBARNOTIFY_MENUITEM_SHOW (WM_USER + 21)
-#define WM_TASKBARNOTIFY_MENUITEM_HIDE (WM_USER + 22)
-#define WM_TASKBARNOTIFY_MENUITEM_RELOAD (WM_USER + 23)
-#define WM_TASKBARNOTIFY_MENUITEM_ABOUT (WM_USER + 24)
-#define WM_TASKBARNOTIFY_MENUITEM_EXIT (WM_USER + 25)
-#define WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE (WM_USER + 26)
-
+#define INTERNET_OPTION_PER_CONNECTION_OPTION           75
 // Options used in INTERNET_PER_CONN_OPTON struct
 #define INTERNET_PER_CONN_FLAGS                         1
 #define INTERNET_PER_CONN_PROXY_SERVER                  2
 #define INTERNET_PER_CONN_PROXY_BYPASS                  3
 #define INTERNET_PER_CONN_AUTOCONFIG_URL                4
 #define INTERNET_PER_CONN_AUTODISCOVERY_FLAGS           5
-
 // PER_CONN_FLAGS
-#define PROXY_TYPE_DIRECT                               0x00000001   // direct to net
-#define PROXY_TYPE_PROXY                                0x00000002   // via named proxy
-#define PROXY_TYPE_AUTO_PROXY_URL                       0x00000004   // autoproxy URL
-#define PROXY_TYPE_AUTO_DETECT                          0x00000008   // use autoproxy detection
-
-#define INTERNET_OPTION_PER_CONNECTION_OPTION           75
+#define PROXY_TYPE_DIRECT                               0x00000001
+#define PROXY_TYPE_PROXY                                0x00000002
+#define PROXY_TYPE_AUTO_PROXY_URL                       0x00000004
+#define PROXY_TYPE_AUTO_DETECT                          0x00000008
 
 typedef struct {
   DWORD dwOption;
@@ -56,6 +45,19 @@ typedef struct {
   DWORD                      dwOptionError;
   LPINTERNET_PER_CONN_OPTION pOptions;
 } INTERNET_PER_CONN_OPTION_LIST, *LPINTERNET_PER_CONN_OPTION_LIST;
+
+#endif
+
+extern "C" WINBASEAPI HWND WINAPI GetConsoleWindow();
+
+#define NID_UID 123
+#define WM_TASKBARNOTIFY WM_USER+20
+#define WM_TASKBARNOTIFY_MENUITEM_SHOW (WM_USER + 21)
+#define WM_TASKBARNOTIFY_MENUITEM_HIDE (WM_USER + 22)
+#define WM_TASKBARNOTIFY_MENUITEM_RELOAD (WM_USER + 23)
+#define WM_TASKBARNOTIFY_MENUITEM_ABOUT (WM_USER + 24)
+#define WM_TASKBARNOTIFY_MENUITEM_EXIT (WM_USER + 25)
+#define WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE (WM_USER + 26)
 
 HINSTANCE hInst;
 HWND hWnd;
@@ -76,7 +78,7 @@ static DWORD GetProcessId(HANDLE hProcess)
 	// https://gist.github.com/kusma/268888
 	typedef DWORD (WINAPI *pfnGPI)(HANDLE);
 	typedef ULONG (WINAPI *pfnNTQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
- 
+
 	static int first = 1;
 	static pfnGPI GetProcessId;
 	static pfnNTQIP ZwQueryInformationProcess;
@@ -117,7 +119,7 @@ BOOL ShowTrayIcon()
 	nid.uID	   = NID_UID;
 	nid.uFlags = NIF_ICON|NIF_MESSAGE|NIF_TIP;
 	nid.dwInfoFlags=NIIF_INFO;
-	nid.uCallbackMessage = WM_TASKBARNOTIFY;	
+	nid.uCallbackMessage = WM_TASKBARNOTIFY;
 	nid.hIcon = LoadIcon(hInst, (LPCTSTR)IDI_SMALL);
 	lstrcpy(nid.szTip, szTooltip);
 	if (lstrlen(szBalloon) > 0)
@@ -148,7 +150,7 @@ BOOL EnumExtraInterfaces()
     if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
 		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Connections",
 									  0,
-									  KEY_READ | KEY_WRITE, 
+									  KEY_READ | KEY_WRITE,
 									  &hKey))
 	{
 		int index = 0;
@@ -161,12 +163,12 @@ BOOL EnumExtraInterfaces()
 				break;
 			else if (wcscmp(szName, L"DefaultConnectionSettings") && wcscmp(szName, L"SavedLegacySettings"))
 				wcscpy(lpszExtraInterfaces[index++], szName);
-			
+
 		}
 		lpszExtraInterfaces[index][0] = 0;
 		RegCloseKey(hKey);
 	}
-	
+
 	return TRUE;
 }
 
@@ -181,7 +183,7 @@ LPCTSTR GetWindowsProxy()
     if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
 		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
 									  0,
-									  KEY_READ | KEY_WRITE, 
+									  KEY_READ | KEY_WRITE,
 									  &hKey))
 	{
 		szProxy[0] = 0;
@@ -216,36 +218,38 @@ BOOL SetWindowsProxy(int n)
 {
 	TCHAR * szProxyInterface = NULL;
 	TCHAR * szProxy = lpProxyList[n];
-	INTERNET_PER_CONN_OPTION_LIST conn_options;  
-    BOOL    bReturn;  
+	INTERNET_PER_CONN_OPTION_LIST conn_options;
+    BOOL    bReturn;
     DWORD   dwBufferSize = sizeof(conn_options);
 
-	conn_options.dwSize = dwBufferSize;        
-    conn_options.pszConnection = szProxyInterface;
-    conn_options.dwOptionCount = 1;  
-    conn_options.pOptions = new INTERNET_PER_CONN_OPTION[conn_options.dwOptionCount];  
-      
-    if(!conn_options.pOptions)    
-        return FALSE;  
-   
-    
-	
 	if (wcslen(szProxy) == 0)
 	{
-		conn_options.pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;  
-		conn_options.pOptions[0].Value.dwValue = PROXY_TYPE_DIRECT;  
+		conn_options.dwSize = dwBufferSize;
+		conn_options.pszConnection = szProxyInterface;
+		conn_options.dwOptionCount = 1;
+		conn_options.pOptions = new INTERNET_PER_CONN_OPTION[conn_options.dwOptionCount];
+		conn_options.pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
+		conn_options.pOptions[0].Value.dwValue = PROXY_TYPE_DIRECT;
 	}
 	else if (wcsstr(szProxy, L"://") != NULL)
 	{
+		conn_options.dwSize = dwBufferSize;
+		conn_options.pszConnection = szProxyInterface;
+		conn_options.dwOptionCount = 3;
+		conn_options.pOptions = new INTERNET_PER_CONN_OPTION[conn_options.dwOptionCount];
 		conn_options.pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
 		conn_options.pOptions[0].Value.dwValue = PROXY_TYPE_DIRECT | PROXY_TYPE_AUTO_PROXY_URL;
 		conn_options.pOptions[1].dwOption = INTERNET_PER_CONN_PROXY_SERVER;
 		conn_options.pOptions[1].Value.pszValue = szProxy;
 		conn_options.pOptions[2].dwOption = INTERNET_PER_CONN_PROXY_BYPASS;
-		conn_options.pOptions[2].Value.pszValue = TEXT("<local>");
+		conn_options.pOptions[2].Value.pszValue = L"<local>";
 	}
 	else
 	{
+		conn_options.dwSize = dwBufferSize;
+		conn_options.pszConnection = szProxyInterface;
+		conn_options.dwOptionCount = 3;
+		conn_options.pOptions = new INTERNET_PER_CONN_OPTION[conn_options.dwOptionCount];
 		conn_options.pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
 		conn_options.pOptions[0].Value.dwValue = PROXY_TYPE_DIRECT | PROXY_TYPE_PROXY;
 		conn_options.pOptions[1].dwOption = INTERNET_PER_CONN_PROXY_SERVER;
@@ -254,10 +258,10 @@ BOOL SetWindowsProxy(int n)
 		conn_options.pOptions[2].Value.pszValue = L"<local>";
 	}
 
-	bReturn = InternetSetOption(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, &conn_options, dwBufferSize);   
-    delete [] conn_options.pOptions;  
-    InternetSetOption(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);  
-    InternetSetOption(NULL, INTERNET_OPTION_REFRESH , NULL, 0); 
+	bReturn = InternetSetOption(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, &conn_options, dwBufferSize);
+    delete [] conn_options.pOptions;
+    InternetSetOption(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);
+    InternetSetOption(NULL, INTERNET_OPTION_REFRESH , NULL, 0);
 	return bReturn;
 }
 
@@ -275,7 +279,7 @@ BOOL ShowPopupMenu()
 	}
 
 	HMENU hMenu = CreatePopupMenu();
-	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_SHOW, L"\x663e\x793a"); 	
+	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_SHOW, L"\x663e\x793a");
 	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_HIDE, L"\x9690\x85cf");
 	AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, L"\x8bbe\x7f6e IE \x4ee3\x7406");
 	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_RELOAD, L"\x91cd\x65b0\x8f7d\x5165");
@@ -364,7 +368,7 @@ BOOL CreateConsole()
 	_wfreopen(L"CONOUT$", L"w+t", stdout);
 
 	hConsole = GetConsoleWindow();
-	
+
 	if (GetEnvironmentVariableW(L"VISIBLE", szVisible, BUFSIZ-1) && szVisible[0] == L'0')
 	{
 		ShowWindow(hConsole, SW_HIDE);
