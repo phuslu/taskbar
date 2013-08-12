@@ -4,6 +4,7 @@
 #include <wininet.h>
 #include <shellapi.h>
 #include <stdio.h>
+#include <wininet.h>
 #include <io.h>
 #include "psapi.h"
 #include "resource.h"
@@ -23,6 +24,38 @@ extern "C" WINBASEAPI HWND WINAPI GetConsoleWindow();
 #define WM_TASKBARNOTIFY_MENUITEM_ABOUT (WM_USER + 24)
 #define WM_TASKBARNOTIFY_MENUITEM_EXIT (WM_USER + 25)
 #define WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE (WM_USER + 26)
+
+// Options used in INTERNET_PER_CONN_OPTON struct
+#define INTERNET_PER_CONN_FLAGS                         1
+#define INTERNET_PER_CONN_PROXY_SERVER                  2
+#define INTERNET_PER_CONN_PROXY_BYPASS                  3
+#define INTERNET_PER_CONN_AUTOCONFIG_URL                4
+#define INTERNET_PER_CONN_AUTODISCOVERY_FLAGS           5
+
+// PER_CONN_FLAGS
+#define PROXY_TYPE_DIRECT                               0x00000001   // direct to net
+#define PROXY_TYPE_PROXY                                0x00000002   // via named proxy
+#define PROXY_TYPE_AUTO_PROXY_URL                       0x00000004   // autoproxy URL
+#define PROXY_TYPE_AUTO_DETECT                          0x00000008   // use autoproxy detection
+
+#define INTERNET_OPTION_PER_CONNECTION_OPTION           75
+
+typedef struct {
+  DWORD dwOption;
+  union {
+    DWORD    dwValue;
+    LPTSTR   pszValue;
+    FILETIME ftValue;
+  } Value;
+} INTERNET_PER_CONN_OPTION, *LPINTERNET_PER_CONN_OPTION;
+
+typedef struct {
+  DWORD                      dwSize;
+  LPTSTR                     pszConnection;
+  DWORD                      dwOptionCount;
+  DWORD                      dwOptionError;
+  LPINTERNET_PER_CONN_OPTION pOptions;
+} INTERNET_PER_CONN_OPTION_LIST, *LPINTERNET_PER_CONN_OPTION_LIST;
 
 HINSTANCE hInst;
 HWND hWnd;
@@ -181,42 +214,51 @@ LPCTSTR GetWindowsProxy()
 
 BOOL SetWindowsProxy(int n)
 {
+	TCHAR * szProxyInterface = NULL;
 	TCHAR * szProxy = lpProxyList[n];
-    HKEY hKey;
+	INTERNET_PER_CONN_OPTION_LIST conn_options;  
+    BOOL    bReturn;  
+    DWORD   dwBufferSize = sizeof(conn_options);
 
-    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
-		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
-									  0,
-									  KEY_READ | KEY_WRITE, 
-									  &hKey))
+	conn_options.dwSize = dwBufferSize;        
+    conn_options.pszConnection = szProxyInterface;
+    conn_options.dwOptionCount = 1;  
+    conn_options.pOptions = new INTERNET_PER_CONN_OPTION[conn_options.dwOptionCount];  
+      
+    if(!conn_options.pOptions)    
+        return FALSE;  
+   
+    
+	
+	if (wcslen(szProxy) == 0)
 	{
-		if (wcslen(szProxy) == 0)
-		{
-			DWORD dwData = 0;
-			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
-			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)L"", 2);
-		}
-		else if (wcsstr(szProxy, L"://") != NULL)
-		{
-			DWORD dwData = 0;
-			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
-			RegSetValueExW(hKey, L"ProxyOverride", 0, REG_SZ, (LPBYTE)L"<local>", 16);
-			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)szProxy, (lstrlen(szProxy)+1)*sizeof(TCHAR));
-		}
-		else
-		{
-			DWORD dwData = 1;
-			RegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, (LPBYTE)&dwData, sizeof(REG_DWORD));
-			RegSetValueExW(hKey, L"ProxyOverride", 0, REG_SZ, (LPBYTE)L"<local>", 16);
-			RegSetValueExW(hKey, L"AutoConfigURL", 0, REG_SZ, (LPBYTE)L"", 2);
-			RegSetValueExW(hKey, L"ProxyServer", 0, REG_SZ, (LPBYTE)szProxy, (lstrlen(szProxy)+1)*sizeof(TCHAR));
-		}
-		RegCloseKey(hKey);
-		InternetSetOptionW(0, INTERNET_OPTION_REFRESH, 0, 0);
-		InternetSetOptionW(0, INTERNET_OPTION_SETTINGS_CHANGED, 0, 0);
-    }
+		conn_options.pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;  
+		conn_options.pOptions[0].Value.dwValue = PROXY_TYPE_DIRECT;  
+	}
+	else if (wcsstr(szProxy, L"://") != NULL)
+	{
+		conn_options.pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
+		conn_options.pOptions[0].Value.dwValue = PROXY_TYPE_DIRECT | PROXY_TYPE_AUTO_PROXY_URL;
+		conn_options.pOptions[1].dwOption = INTERNET_PER_CONN_PROXY_SERVER;
+		conn_options.pOptions[1].Value.pszValue = szProxy;
+		conn_options.pOptions[2].dwOption = INTERNET_PER_CONN_PROXY_BYPASS;
+		conn_options.pOptions[2].Value.pszValue = TEXT("<local>");
+	}
+	else
+	{
+		conn_options.pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
+		conn_options.pOptions[0].Value.dwValue = PROXY_TYPE_DIRECT | PROXY_TYPE_PROXY;
+		conn_options.pOptions[1].dwOption = INTERNET_PER_CONN_PROXY_SERVER;
+		conn_options.pOptions[1].Value.pszValue = szProxy;
+		conn_options.pOptions[2].dwOption = INTERNET_PER_CONN_PROXY_BYPASS;
+		conn_options.pOptions[2].Value.pszValue = L"<local>";
+	}
 
-	return TRUE;
+	bReturn = InternetSetOption(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, &conn_options, dwBufferSize);   
+    delete [] conn_options.pOptions;  
+    InternetSetOption(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);  
+    InternetSetOption(NULL, INTERNET_OPTION_REFRESH , NULL, 0); 
+	return bReturn;
 }
 
 
