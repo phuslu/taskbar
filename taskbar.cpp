@@ -478,6 +478,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			else if (lParam == WM_RBUTTONUP)
 			{
+				SetForegroundWindow(hWnd);
 				ShowPopupMenu();
 			}
 			break;
