@@ -239,7 +239,7 @@ BOOL SetWindowsProxy(int n)
 		conn_options.pOptions = new INTERNET_PER_CONN_OPTION[conn_options.dwOptionCount];
 		conn_options.pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
 		conn_options.pOptions[0].Value.dwValue = PROXY_TYPE_DIRECT | PROXY_TYPE_AUTO_PROXY_URL;
-		conn_options.pOptions[1].dwOption = INTERNET_PER_CONN_PROXY_SERVER;
+		conn_options.pOptions[1].dwOption = INTERNET_PER_CONN_AUTOCONFIG_URL;
 		conn_options.pOptions[1].Value.pszValue = szProxy;
 		conn_options.pOptions[2].dwOption = INTERNET_PER_CONN_PROXY_BYPASS;
 		conn_options.pOptions[2].Value.pszValue = L"<local>";
