@@ -150,7 +150,7 @@ BOOL EnumExtraInterfaces()
     if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
 		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Connections",
 									  0,
-									  KEY_READ | KEY_WRITE,
+									  KEY_READ | 0x0200,
 									  &hKey))
 	{
 		int index = 0;
@@ -183,7 +183,7 @@ LPCTSTR GetWindowsProxy()
     if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
 		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
 									  0,
-									  KEY_READ | KEY_WRITE,
+									  KEY_READ | 0x0200,
 									  &hKey))
 	{
 		szProxy[0] = 0;
