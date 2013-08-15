@@ -124,8 +124,9 @@ BOOL ShowTrayIcon(DWORD dwMessage=NIM_ADD)
 	if (lstrlen(szBalloon) > 0)
 	{
 		nid.uFlags |= NIF_INFO;
+		nid.uTimeoutAndVersion = 3 * 1000 | NOTIFYICON_VERSION;
 		lstrcpy(nid.szInfo, szBalloon);
-		lstrcpy(nid.szInfoTitle,szTitle);
+		lstrcpy(nid.szInfoTitle, szTitle);
 	}
 	Shell_NotifyIcon(dwMessage, &nid);
 	return TRUE;
