@@ -124,7 +124,7 @@ END
 
 STRINGTABLE DISCARDABLE 
 BEGIN
-    IDS_CMDLINE             "python33.exe proxy.py"
+    IDS_CMDLINE             "python27.exe proxy.py"
     IDS_TOOLTIP             "GoAgent"
     IDS_TITLE               "GoAgent Title"
     IDS_BALLOON             "GoAgent 已经启动，单击托盘图标可以最小化。"
