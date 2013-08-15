@@ -109,7 +109,7 @@ static DWORD GetProcessId(HANDLE hProcess)
 	return 0;
 }
 
-BOOL ShowTrayIcon()
+BOOL ShowTrayIcon(DWORD dwMessage=NIM_ADD)
 {
 	NOTIFYICONDATA nid;
 	ZeroMemory(&nid, sizeof(NOTIFYICONDATA));
@@ -127,7 +127,7 @@ BOOL ShowTrayIcon()
 		lstrcpy(nid.szInfo, szBalloon);
 		lstrcpy(nid.szInfoTitle,szTitle);
 	}
-	Shell_NotifyIcon(NIM_ADD, &nid);
+	Shell_NotifyIcon(dwMessage, &nid);
 	return TRUE;
 }
 
@@ -183,10 +183,8 @@ LPCTSTR GetWindowsProxy()
 }
 
 
-BOOL SetWindowsProxy(int n)
+BOOL SetWindowsProxy(TCHAR* szProxy, TCHAR* szProxyInterface=NULL)
 {
-	TCHAR * szProxyInterface = NULL;
-	TCHAR * szProxy = lpProxyList[n];
 	INTERNET_PER_CONN_OPTION_LIST conn_options;
     BOOL    bReturn;
     DWORD   dwBufferSize = sizeof(conn_options);
@@ -477,7 +475,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			else if (WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE <= nID && nID <= WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE+sizeof(lpProxyList)/sizeof(lpProxyList[0]))
 			{
-				SetWindowsProxy(nID-WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE);
+				TCHAR *szProxy = lpProxyList[nID-WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE];
+				SetWindowsProxy(szProxy);
+				lstrcpyn(szTooltip, szProxy, sizeof(szTooltip)/sizeof(szTooltip[0])-1);
+				lstrcpyn(szBalloon, szProxy, sizeof(szBalloon)/sizeof(szBalloon[0])-1);
+				ShowTrayIcon(NIM_MODIFY);
 			}
 			break;
 		case WM_TIMER:
