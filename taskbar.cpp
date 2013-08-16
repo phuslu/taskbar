@@ -255,6 +255,7 @@ BOOL ShowPopupMenu()
 	GetCursorPos(&pt);
 	TrackPopupMenu(hMenu, TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
 	PostMessage(hWnd, WM_NULL, 0, 0);
+	DestroyMenu(hSubMenu);
 	DestroyMenu(hMenu);
 	return TRUE;
 }
