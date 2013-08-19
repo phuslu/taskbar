@@ -109,7 +109,7 @@ static DWORD GetProcessId(HANDLE hProcess)
 	return 0;
 }
 
-BOOL ShowTrayIcon(DWORD dwMessage=NIM_ADD)
+BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
 {
 	NOTIFYICONDATA nid;
 	ZeroMemory(&nid, sizeof(NOTIFYICONDATA));
@@ -120,13 +120,18 @@ BOOL ShowTrayIcon(DWORD dwMessage=NIM_ADD)
 	nid.dwInfoFlags=NIIF_INFO;
 	nid.uCallbackMessage = WM_TASKBARNOTIFY;
 	nid.hIcon = LoadIcon(hInst, (LPCTSTR)IDI_SMALL);
-	lstrcpy(nid.szTip, szTooltip);
-	if (lstrlen(szBalloon) > 0)
+	nid.uFlags |= NIF_INFO;
+	nid.uTimeoutAndVersion = 3 * 1000 | NOTIFYICON_VERSION;
+	lstrcpy(nid.szInfoTitle, szTitle);
+	if (lpszProxy && lstrlen(lpszProxy) > 0)
 	{
-		nid.uFlags |= NIF_INFO;
-		nid.uTimeoutAndVersion = 3 * 1000 | NOTIFYICON_VERSION;
+		lstrcpy(nid.szTip, lpszProxy);
+		lstrcpy(nid.szInfo, lpszProxy);
+	}
+	else
+	{
 		lstrcpy(nid.szInfo, szBalloon);
-		lstrcpy(nid.szInfoTitle, szTitle);
+		lstrcpy(nid.szTip, szTooltip);
 	}
 	Shell_NotifyIcon(dwMessage, &nid);
 	return TRUE;
@@ -479,9 +484,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				TCHAR *szProxy = lpProxyList[nID-WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE];
 				SetWindowsProxy(szProxy);
-				lstrcpyn(szTooltip, szProxy, sizeof(szTooltip)/sizeof(szTooltip[0])-1);
-				lstrcpyn(szBalloon, szProxy, sizeof(szBalloon)/sizeof(szBalloon[0])-1);
-				ShowTrayIcon(NIM_MODIFY);
+				ShowTrayIcon(szProxy, NIM_MODIFY);
 			}
 			break;
 		case WM_TIMER:
@@ -529,7 +532,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	CreateConsole();
 	CDCurrentDirectory();
 	ExecCmdline();
-	ShowTrayIcon();
+	ShowTrayIcon(GetWindowsProxy());
 	SetTimer(hWnd, 0, 30 * 1000, NULL);
 	while (GetMessage(&msg, NULL, 0, 0))
 	{
