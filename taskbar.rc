@@ -129,7 +129,7 @@ BEGIN
     IDS_TITLE               "GoAgent Notify"
     IDS_BALLOON             "GoAgent 已经启动，单击托盘图标可以最小化。"
     IDS_ENVIRONMENT         "VISIBLE=0\nRESET_IEPROXY_ONEXIT=1\nGEVENT_RESOLVER=block\nMEMORY_LIMIT=256M"
-    IDS_PROXYLIST           "http://127.0.0.1:8086/proxy.pac\n127.0.0.1:8087\n"
+    IDS_PROXYLIST           "file://%PWD%/proxy.pac\n127.0.0.1:8087\n"
 END
 
 #endif    // Chinese (P.R.C.) resources

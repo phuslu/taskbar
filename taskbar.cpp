@@ -267,6 +267,9 @@ BOOL ShowPopupMenu()
 
 BOOL ParseProxyList()
 {
+	TCHAR * tmpProxyString = _wcsdup(szProxyString);
+	ExpandEnvironmentStrings(tmpProxyString, szProxyString, sizeof(szProxyString)/sizeof(szProxyString[0]));
+	free(tmpProxyString);
 	TCHAR *sep = L"\n";
 	TCHAR *pos = wcstok(szProxyString, sep);
 	INT i = 0;
@@ -274,7 +277,7 @@ BOOL ParseProxyList()
 	while (pos && i < sizeof(lpProxyList)/sizeof(lpProxyList[0]))
 	{
 		lpProxyList[i++] = pos;
-		pos = wcstok (NULL, sep);
+		pos = wcstok(NULL, sep);
 	}
 	lpProxyList[i] = 0;
 	return TRUE;
@@ -312,6 +315,14 @@ BOOL CDCurrentDirectory()
 	GetModuleFileName(NULL, szPath, sizeof(szPath)/sizeof(szPath[0])-1);
 	*wcsrchr(szPath, L'\\') = 0;
 	SetCurrentDirectory(szPath);
+	LPTSTR pos = szPath;
+	while (*pos)
+	{
+		if (*pos == L'\\')
+			*pos = L'/';
+		pos++;
+	}
+	SetEnvironmentVariableW(L"PWD", szPath);
 	return TRUE;
 }
 
@@ -523,14 +534,14 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmdShow)
 {
 	MSG msg;
+	CDCurrentDirectory();
 	MyRegisterClass(hInstance);
 	if (!InitInstance (hInstance, SW_HIDE))
 	{
 		return FALSE;
 	}
-	SetEenvironment();
 	CreateConsole();
-	CDCurrentDirectory();
+	SetEenvironment();
 	ExecCmdline();
 	ShowTrayIcon(GetWindowsProxy());
 	SetTimer(hWnd, 0, 30 * 1000, NULL);
