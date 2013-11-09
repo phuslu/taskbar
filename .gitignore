@@ -1,0 +1,5 @@
+Release/*
+Debug/*
+taskbar.ncb
+taskbar.suo
+taskbar.vcproj.*

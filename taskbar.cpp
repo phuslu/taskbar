@@ -1,5 +1,7 @@
 #define _WIN32_IE 0x0500
 
+#include "stdafx.h"
+
 #include <windows.h>
 #include <wininet.h>
 #include <shellapi.h>
@@ -72,27 +74,27 @@ TCHAR szProxyString[2048] = L"";
 TCHAR *lpProxyList[8] = {0};
 volatile DWORD dwChildrenPid;
 
-static DWORD GetProcessId(HANDLE hProcess)
+static DWORD GetProcessIdGae(HANDLE hProcess)
 {
 	// https://gist.github.com/kusma/268888
 	typedef DWORD (WINAPI *pfnGPI)(HANDLE);
 	typedef ULONG (WINAPI *pfnNTQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
 
 	static int first = 1;
-	static pfnGPI GetProcessId;
+	static pfnGPI pGetProcessId;
 	static pfnNTQIP ZwQueryInformationProcess;
 	if (first)
 	{
 		first = 0;
-		GetProcessId = (pfnGPI)GetProcAddress(
+		pGetProcessId = (pfnGPI)GetProcAddress(
 			GetModuleHandleW(L"KERNEL32.DLL"), "GetProcessId");
-		if (!GetProcessId)
+		if (!pGetProcessId)
 			ZwQueryInformationProcess = (pfnNTQIP)GetProcAddress(
 				GetModuleHandleW(L"NTDLL.DLL"),
 				"ZwQueryInformationProcess");
 	}
-	if (GetProcessId)
-		return GetProcessId(hProcess);
+	if (pGetProcessId)
+		return pGetProcessId(hProcess);
 	if (ZwQueryInformationProcess)
 	{
 		struct
@@ -117,11 +119,11 @@ BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
 	nid.hWnd   = hWnd;
 	nid.uID	   = NID_UID;
 	nid.uFlags = NIF_ICON|NIF_MESSAGE|NIF_TIP;
-	nid.dwInfoFlags=NIIF_INFO;
+	nid.dwInfoFlags = NIIF_INFO;
 	nid.uCallbackMessage = WM_TASKBARNOTIFY;
 	nid.hIcon = LoadIcon(hInst, (LPCTSTR)IDI_SMALL);
 	nid.uFlags |= NIF_INFO;
-	nid.uTimeoutAndVersion = 3 * 1000 | NOTIFYICON_VERSION;
+	//nid.uTimeoutAndVersion = 3 * 1000 | NOTIFYICON_VERSION;
 	lstrcpy(nid.szInfoTitle, szTitle);
 	if (lpszProxy && lstrlen(lpszProxy) > 0)
 	{
@@ -375,7 +377,7 @@ BOOL ExecCmdline()
 	BOOL bRet = CreateProcess(NULL, szCommandLine, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
 	if(bRet)
 	{
-		dwChildrenPid = GetProcessId(pi.hProcess);
+		dwChildrenPid = GetProcessIdGae(pi.hProcess);
 	}
 	else
 	{
