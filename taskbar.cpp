@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <wininet.h>
 #include <io.h>
+#include <tchar.h>
 #include "psapi.h"
 #include "resource.h"
 
@@ -122,7 +123,7 @@ BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
 	nid.dwInfoFlags = NIIF_INFO;
 	nid.uCallbackMessage = WM_TASKBARNOTIFY;
 	nid.hIcon = LoadIcon(hInst, (LPCTSTR)IDI_SMALL);
-	nid.uFlags |= NIF_INFO;
+	//nid.uFlags |= NIF_INFO;
 	//nid.uTimeoutAndVersion = 3 * 1000 | NOTIFYICON_VERSION;
 	lstrcpy(nid.szInfoTitle, szTitle);
 	if (lpszProxy && lstrlen(lpszProxy) > 0)
@@ -501,7 +502,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 		case WM_TIMER:
-			CheckMemoryLimit();
+			nID = LOWORD(wParam);
+			if(nID == 4)
+			{
+				ShowWindow(hConsole, SW_HIDE);
+				KillTimer(hWnd, 4);
+			}
+			else
+			{
+				CheckMemoryLimit();
+			}
 			break;
 		case WM_DESTROY:
 			PostQuitMessage(0);
@@ -542,11 +552,19 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	{
 		return FALSE;
 	}
+	
 	CreateConsole();
 	SetEenvironment();
 	ExecCmdline();
 	ShowTrayIcon(GetWindowsProxy());
+
 	SetTimer(hWnd, 0, 30 * 1000, NULL);
+
+	if(_tcscmp(lpCmdLine, _T("--min")) == 0)
+	{
+		SetTimer(hWnd, 4, 1000, NULL);
+	}
+
 	while (GetMessage(&msg, NULL, 0, 0))
 	{
 		TranslateMessage(&msg);
