@@ -16,6 +16,7 @@
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "wininet.lib")
+#pragma comment(lib, "Ws2_32.lib")
 
 #ifndef INTERNET_OPTION_PER_CONNECTION_OPTION
 
@@ -505,8 +506,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			nID = LOWORD(wParam);
 			if(nID == 4)
 			{
-				ShowWindow(hConsole, SW_HIDE);
-				KillTimer(hWnd, 4);
+				SOCKET connSocket;
+				connSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+				sockaddr_in gaePort;
+				gaePort.sin_family = AF_INET;
+				gaePort.sin_addr.s_addr = inet_addr("127.0.0.1");
+				gaePort.sin_port = htons(8087);
+
+				int ret = connect(connSocket, (SOCKADDR *)&gaePort, sizeof (gaePort));
+				if (ret == 0) {
+					ShowWindow(hConsole, SW_HIDE);
+					KillTimer(hWnd, 4);
+				}
+
+				closesocket(connSocket);
 			}
 			else
 			{
@@ -552,6 +566,12 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	{
 		return FALSE;
 	}
+
+	// Initialize winsock
+	WORD wVersionRequested;
+	WSADATA wsaData;
+    wVersionRequested = MAKEWORD(2, 2);
+	WSAStartup(wVersionRequested, &wsaData);
 	
 	CreateConsole();
 	SetEenvironment();
@@ -562,7 +582,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 
 	if(_tcscmp(lpCmdLine, _T("--min")) == 0)
 	{
-		SetTimer(hWnd, 4, 1000, NULL);
+		SetTimer(hWnd, 4, 2000, NULL);
 	}
 
 	while (GetMessage(&msg, NULL, 0, 0))
