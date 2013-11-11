@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 
+#include <string>
 #include <windows.h>
 #include <wininet.h>
 #include <shellapi.h>
@@ -11,6 +12,7 @@
 #include <tchar.h>
 #include "psapi.h"
 #include "resource.h"
+#include "ini/IniFileProcessor.h"
 
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "psapi.lib")
@@ -76,6 +78,8 @@ TCHAR szProxyString[2048] = _T("");
 TCHAR *lpProxyList[8] = {0};
 volatile DWORD dwChildrenPid;
 BOOL fMinized = FALSE;
+std::string strIp;
+int iPort;
 
 static DWORD GetProcessIdGae(HANDLE hProcess)
 {
@@ -513,8 +517,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				sockaddr_in gaePort;
 				gaePort.sin_family = AF_INET;
-				gaePort.sin_addr.s_addr = inet_addr("127.0.0.1");
-				gaePort.sin_port = htons(8087);
+				gaePort.sin_addr.s_addr = inet_addr(strIp.c_str());
+				gaePort.sin_port = htons(iPort);
 
 				int ret = connect(connSocket, (SOCKADDR *)&gaePort, sizeof (gaePort));
 				if (ret == 0) {
@@ -568,6 +572,16 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	{
 		return FALSE;
 	}
+
+	IniFileProcessor::IniMap map;
+
+	IniFileProcessor fileProcessor(_T("proxy.ini"));
+	map = fileProcessor.GetInfo(true);
+
+	IniValue::StrMap mapListen = map["listen"].GetMapValue();
+	strIp = mapListen["ip"];
+	std::string strPort = mapListen["port"];
+	iPort = atoi(strPort.c_str());
 
 	// Initialize winsock
 	WORD wVersionRequested;

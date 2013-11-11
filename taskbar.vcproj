@@ -48,6 +48,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
+				AdditionalIncludeDirectories="$(ProjectDir)"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -145,6 +146,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="1"
 				InlineFunctionExpansion="1"
+				AdditionalIncludeDirectories="$(ProjectDir)"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;UNICODE"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -253,6 +255,46 @@
 					/>
 				</FileConfiguration>
 			</File>
+			<Filter
+				Name="ini"
+				>
+				<File
+					RelativePath=".\ini\IniFileProcessor.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\ini\IniFileProcessor.h"
+					>
+				</File>
+				<File
+					RelativePath=".\ini\IniProcessor.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\ini\IniProcessor.h"
+					>
+				</File>
+				<File
+					RelativePath=".\ini\IniValue.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\ini\IniValue.h"
+					>
+				</File>
+				<File
+					RelativePath=".\ini\strhelper.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\ini\strhelper.h"
+					>
+				</File>
+				<File
+					RelativePath=".\ini\unsortedmap.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
