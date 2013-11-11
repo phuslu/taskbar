@@ -66,15 +66,16 @@ extern "C" WINBASEAPI HWND WINAPI GetConsoleWindow();
 HINSTANCE hInst;
 HWND hWnd;
 HWND hConsole;
-TCHAR szTitle[64] = L"";
-TCHAR szWindowClass[16] = L"taskbar";
-TCHAR szCommandLine[1024] = L"";
-TCHAR szTooltip[512] = L"";
-TCHAR szBalloon[512] = L"";
-TCHAR szEnvironment[1024] = L"";
-TCHAR szProxyString[2048] = L"";
+TCHAR szTitle[64] = _T("");
+TCHAR szWindowClass[16] = _T("taskbar");
+TCHAR szCommandLine[1024] = _T("");
+TCHAR szTooltip[512] = _T("");
+TCHAR szBalloon[512] = _T("");
+TCHAR szEnvironment[1024] = _T("");
+TCHAR szProxyString[2048] = _T("");
 TCHAR *lpProxyList[8] = {0};
 volatile DWORD dwChildrenPid;
+BOOL fMinized = FALSE;
 
 static DWORD GetProcessIdGae(HANDLE hProcess)
 {
@@ -124,7 +125,8 @@ BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
 	nid.dwInfoFlags = NIIF_INFO;
 	nid.uCallbackMessage = WM_TASKBARNOTIFY;
 	nid.hIcon = LoadIcon(hInst, (LPCTSTR)IDI_SMALL);
-	//nid.uFlags |= NIF_INFO;
+	if(!fMinized)
+		nid.uFlags |= NIF_INFO;
 	//nid.uTimeoutAndVersion = 3 * 1000 | NOTIFYICON_VERSION;
 	lstrcpy(nid.szInfoTitle, szTitle);
 	if (lpszProxy && lstrlen(lpszProxy) > 0)
@@ -159,7 +161,7 @@ LPCTSTR GetWindowsProxy()
 	DWORD dwData = 0;
 	DWORD dwSize = sizeof(DWORD);
 
-    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
+    if (ERROR_SUCCESS == RegOpenKeyExW(HKEY_CURRENT_USER,
 		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
 									  0,
 									  KEY_READ | 0x0200,
@@ -572,6 +574,11 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	WSADATA wsaData;
     wVersionRequested = MAKEWORD(2, 2);
 	WSAStartup(wVersionRequested, &wsaData);
+
+	if(_tcscmp(lpCmdLine, _T("--min")) == 0)
+	{
+		fMinized = TRUE;
+	}
 	
 	CreateConsole();
 	SetEenvironment();
@@ -580,7 +587,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 
 	SetTimer(hWnd, 0, 30 * 1000, NULL);
 
-	if(_tcscmp(lpCmdLine, _T("--min")) == 0)
+	if(fMinized)
 	{
 		SetTimer(hWnd, 4, 2000, NULL);
 	}
