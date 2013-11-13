@@ -1,18 +1,24 @@
 #define _WIN32_IE 0x0500
 
+#include "stdafx.h"
+
+#include <string>
 #include <windows.h>
 #include <wininet.h>
 #include <shellapi.h>
 #include <stdio.h>
 #include <wininet.h>
 #include <io.h>
+#include <tchar.h>
 #include "psapi.h"
 #include "resource.h"
+#include "ini/IniFileProcessor.h"
 
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "wininet.lib")
+#pragma comment(lib, "Ws2_32.lib")
 
 #ifndef INTERNET_OPTION_PER_CONNECTION_OPTION
 
@@ -62,37 +68,40 @@ extern "C" WINBASEAPI HWND WINAPI GetConsoleWindow();
 HINSTANCE hInst;
 HWND hWnd;
 HWND hConsole;
-TCHAR szTitle[64] = L"";
-TCHAR szWindowClass[16] = L"taskbar";
-TCHAR szCommandLine[1024] = L"";
-TCHAR szTooltip[512] = L"";
-TCHAR szBalloon[512] = L"";
-TCHAR szEnvironment[1024] = L"";
-TCHAR szProxyString[2048] = L"";
+TCHAR szTitle[64] = _T("");
+TCHAR szWindowClass[16] = _T("taskbar");
+TCHAR szCommandLine[1024] = _T("");
+TCHAR szTooltip[512] = _T("");
+TCHAR szBalloon[512] = _T("");
+TCHAR szEnvironment[1024] = _T("");
+TCHAR szProxyString[2048] = _T("");
 TCHAR *lpProxyList[8] = {0};
 volatile DWORD dwChildrenPid;
+BOOL fMinized = FALSE;
+std::string strIp;
+int iPort;
 
-static DWORD GetProcessId(HANDLE hProcess)
+static DWORD GetProcessIdGae(HANDLE hProcess)
 {
 	// https://gist.github.com/kusma/268888
 	typedef DWORD (WINAPI *pfnGPI)(HANDLE);
 	typedef ULONG (WINAPI *pfnNTQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
 
 	static int first = 1;
-	static pfnGPI GetProcessId;
+	static pfnGPI pGetProcessId;
 	static pfnNTQIP ZwQueryInformationProcess;
 	if (first)
 	{
 		first = 0;
-		GetProcessId = (pfnGPI)GetProcAddress(
+		pGetProcessId = (pfnGPI)GetProcAddress(
 			GetModuleHandleW(L"KERNEL32.DLL"), "GetProcessId");
-		if (!GetProcessId)
+		if (!pGetProcessId)
 			ZwQueryInformationProcess = (pfnNTQIP)GetProcAddress(
 				GetModuleHandleW(L"NTDLL.DLL"),
 				"ZwQueryInformationProcess");
 	}
-	if (GetProcessId)
-		return GetProcessId(hProcess);
+	if (pGetProcessId)
+		return pGetProcessId(hProcess);
 	if (ZwQueryInformationProcess)
 	{
 		struct
@@ -117,11 +126,12 @@ BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
 	nid.hWnd   = hWnd;
 	nid.uID	   = NID_UID;
 	nid.uFlags = NIF_ICON|NIF_MESSAGE|NIF_TIP;
-	nid.dwInfoFlags=NIIF_INFO;
+	nid.dwInfoFlags = NIIF_INFO;
 	nid.uCallbackMessage = WM_TASKBARNOTIFY;
 	nid.hIcon = LoadIcon(hInst, (LPCTSTR)IDI_SMALL);
-	nid.uFlags |= NIF_INFO;
-	nid.uTimeoutAndVersion = 3 * 1000 | NOTIFYICON_VERSION;
+	if(!fMinized)
+		nid.uFlags |= NIF_INFO;
+	//nid.uTimeoutAndVersion = 3 * 1000 | NOTIFYICON_VERSION;
 	lstrcpy(nid.szInfoTitle, szTitle);
 	if (lpszProxy && lstrlen(lpszProxy) > 0)
 	{
@@ -155,7 +165,7 @@ LPCTSTR GetWindowsProxy()
 	DWORD dwData = 0;
 	DWORD dwSize = sizeof(DWORD);
 
-    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
+    if (ERROR_SUCCESS == RegOpenKeyExW(HKEY_CURRENT_USER,
 		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
 									  0,
 									  KEY_READ | 0x0200,
@@ -375,7 +385,7 @@ BOOL ExecCmdline()
 	BOOL bRet = CreateProcess(NULL, szCommandLine, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
 	if(bRet)
 	{
-		dwChildrenPid = GetProcessId(pi.hProcess);
+		dwChildrenPid = GetProcessIdGae(pi.hProcess);
 	}
 	else
 	{
@@ -499,7 +509,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 		case WM_TIMER:
-			CheckMemoryLimit();
+			nID = LOWORD(wParam);
+			if(nID == 4)
+			{
+				SOCKET connSocket;
+				connSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+				sockaddr_in gaePort;
+				gaePort.sin_family = AF_INET;
+				gaePort.sin_addr.s_addr = inet_addr(strIp.c_str());
+				gaePort.sin_port = htons(iPort);
+
+				int ret = connect(connSocket, (SOCKADDR *)&gaePort, sizeof (gaePort));
+				if (ret == 0) {
+					ShowWindow(hConsole, SW_HIDE);
+					KillTimer(hWnd, 4);
+				}
+
+				closesocket(connSocket);
+			}
+			else
+			{
+				CheckMemoryLimit();
+			}
 			break;
 		case WM_DESTROY:
 			PostQuitMessage(0);
@@ -540,11 +572,40 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	{
 		return FALSE;
 	}
+
+	IniFileProcessor::IniMap map;
+
+	IniFileProcessor fileProcessor(_T("proxy.ini"));
+	map = fileProcessor.GetInfo(true);
+
+	IniValue::StrMap mapListen = map["listen"].GetMapValue();
+	strIp = mapListen["ip"];
+	std::string strPort = mapListen["port"];
+	iPort = atoi(strPort.c_str());
+
+	// Initialize winsock
+	WORD wVersionRequested;
+	WSADATA wsaData;
+    wVersionRequested = MAKEWORD(2, 2);
+	WSAStartup(wVersionRequested, &wsaData);
+
+	if(_tcscmp(lpCmdLine, _T("--min")) == 0)
+	{
+		fMinized = TRUE;
+	}
+	
 	CreateConsole();
 	SetEenvironment();
 	ExecCmdline();
 	ShowTrayIcon(GetWindowsProxy());
+
 	SetTimer(hWnd, 0, 30 * 1000, NULL);
+
+	if(fMinized)
+	{
+		SetTimer(hWnd, 4, 2000, NULL);
+	}
+
 	while (GetMessage(&msg, NULL, 0, 0))
 	{
 		TranslateMessage(&msg);
