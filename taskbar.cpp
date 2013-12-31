@@ -72,27 +72,27 @@ TCHAR szProxyString[2048] = L"";
 TCHAR *lpProxyList[8] = {0};
 volatile DWORD dwChildrenPid;
 
-static DWORD GetProcessId(HANDLE hProcess)
+static DWORD MyGetProcessId(HANDLE hProcess)
 {
 	// https://gist.github.com/kusma/268888
 	typedef DWORD (WINAPI *pfnGPI)(HANDLE);
 	typedef ULONG (WINAPI *pfnNTQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
 
 	static int first = 1;
-	static pfnGPI GetProcessId;
+	static pfnGPI pfnGetProcessId;
 	static pfnNTQIP ZwQueryInformationProcess;
 	if (first)
 	{
 		first = 0;
-		GetProcessId = (pfnGPI)GetProcAddress(
+		pfnGetProcessId = (pfnGPI)GetProcAddress(
 			GetModuleHandleW(L"KERNEL32.DLL"), "GetProcessId");
-		if (!GetProcessId)
+		if (!pfnGetProcessId)
 			ZwQueryInformationProcess = (pfnNTQIP)GetProcAddress(
 				GetModuleHandleW(L"NTDLL.DLL"),
 				"ZwQueryInformationProcess");
 	}
-	if (GetProcessId)
-		return GetProcessId(hProcess);
+	if (pfnGetProcessId)
+		return pfnGetProcessId(hProcess);
 	if (ZwQueryInformationProcess)
 	{
 		struct
@@ -121,7 +121,8 @@ BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
 	nid.uCallbackMessage = WM_TASKBARNOTIFY;
 	nid.hIcon = LoadIcon(hInst, (LPCTSTR)IDI_SMALL);
 	nid.uFlags |= NIF_INFO;
-	nid.uTimeoutAndVersion = 3 * 1000 | NOTIFYICON_VERSION;
+	nid.uTimeout = 3 * 1000;
+	nid.uVersion = NOTIFYICON_VERSION;
 	lstrcpy(nid.szInfoTitle, szTitle);
 	if (lpszProxy && lstrlen(lpszProxy) > 0)
 	{
@@ -375,7 +376,7 @@ BOOL ExecCmdline()
 	BOOL bRet = CreateProcess(NULL, szCommandLine, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
 	if(bRet)
 	{
-		dwChildrenPid = GetProcessId(pi.hProcess);
+		dwChildrenPid = MyGetProcessId(pi.hProcess);
 	}
 	else
 	{
