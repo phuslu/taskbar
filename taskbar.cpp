@@ -116,23 +116,26 @@ BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
 	nid.cbSize = (DWORD)sizeof(NOTIFYICONDATA);
 	nid.hWnd   = hWnd;
 	nid.uID	   = NID_UID;
-	nid.uFlags = NIF_ICON|NIF_MESSAGE|NIF_TIP;
+	nid.uFlags = NIF_ICON|NIF_MESSAGE;
 	nid.dwInfoFlags=NIIF_INFO;
 	nid.uCallbackMessage = WM_TASKBARNOTIFY;
 	nid.hIcon = LoadIcon(hInst, (LPCTSTR)IDI_SMALL);
-	nid.uFlags |= NIF_INFO;
 	nid.uTimeout = 3 * 1000;
 	nid.uVersion = NOTIFYICON_VERSION;
 	lstrcpy(nid.szInfoTitle, szTitle);
-	if (lpszProxy && lstrlen(lpszProxy) > 0)
+	if (lpszProxy)
 	{
-		lstrcpy(nid.szTip, lpszProxy);
-		lstrcpy(nid.szInfo, lpszProxy);
-	}
-	else
-	{
-		lstrcpy(nid.szInfo, szBalloon);
-		lstrcpy(nid.szTip, szTooltip);
+		nid.uFlags |= NIF_INFO|NIF_TIP;
+		if (lstrlen(lpszProxy) > 0)
+		{
+			lstrcpy(nid.szTip, lpszProxy);
+			lstrcpy(nid.szInfo, lpszProxy);
+		}
+		else
+		{
+			lstrcpy(nid.szInfo, szBalloon);
+			lstrcpy(nid.szTip, szTooltip);
+		}
 	}
 	Shell_NotifyIcon(dwMessage, &nid);
 	return TRUE;
@@ -453,6 +456,7 @@ void CheckMemoryLimit()
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	static const UINT WM_TASKBARCREATED = ::RegisterWindowMessage(L"TaskbarCreated");
 	int nID;
 	switch (message)
 	{
@@ -506,6 +510,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			PostQuitMessage(0);
 			break;
 		default:
+			if (message == WM_TASKBARCREATED)
+			{
+				ShowTrayIcon(NULL, NIM_ADD);
+				break;
+			}
 			return DefWindowProc(hWnd, message, wParam, lParam);
    }
    return 0;
