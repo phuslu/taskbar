@@ -72,27 +72,27 @@ TCHAR szProxyString[2048] = L"";
 TCHAR *lpProxyList[8] = {0};
 volatile DWORD dwChildrenPid;
 
-static DWORD GetProcessId(HANDLE hProcess)
+static DWORD MyGetProcessId(HANDLE hProcess)
 {
 	// https://gist.github.com/kusma/268888
 	typedef DWORD (WINAPI *pfnGPI)(HANDLE);
 	typedef ULONG (WINAPI *pfnNTQIP)(HANDLE, ULONG, PVOID, ULONG, PULONG);
 
 	static int first = 1;
-	static pfnGPI GetProcessId;
+	static pfnGPI pfnGetProcessId;
 	static pfnNTQIP ZwQueryInformationProcess;
 	if (first)
 	{
 		first = 0;
-		GetProcessId = (pfnGPI)GetProcAddress(
+		pfnGetProcessId = (pfnGPI)GetProcAddress(
 			GetModuleHandleW(L"KERNEL32.DLL"), "GetProcessId");
-		if (!GetProcessId)
+		if (!pfnGetProcessId)
 			ZwQueryInformationProcess = (pfnNTQIP)GetProcAddress(
 				GetModuleHandleW(L"NTDLL.DLL"),
 				"ZwQueryInformationProcess");
 	}
-	if (GetProcessId)
-		return GetProcessId(hProcess);
+	if (pfnGetProcessId)
+		return pfnGetProcessId(hProcess);
 	if (ZwQueryInformationProcess)
 	{
 		struct
@@ -116,22 +116,26 @@ BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
 	nid.cbSize = (DWORD)sizeof(NOTIFYICONDATA);
 	nid.hWnd   = hWnd;
 	nid.uID	   = NID_UID;
-	nid.uFlags = NIF_ICON|NIF_MESSAGE|NIF_TIP;
+	nid.uFlags = NIF_ICON|NIF_MESSAGE;
 	nid.dwInfoFlags=NIIF_INFO;
 	nid.uCallbackMessage = WM_TASKBARNOTIFY;
 	nid.hIcon = LoadIcon(hInst, (LPCTSTR)IDI_SMALL);
-	nid.uFlags |= NIF_INFO;
-	nid.uTimeoutAndVersion = 3 * 1000 | NOTIFYICON_VERSION;
+	nid.uTimeout = 3 * 1000;
+	nid.uVersion = NOTIFYICON_VERSION;
 	lstrcpy(nid.szInfoTitle, szTitle);
-	if (lpszProxy && lstrlen(lpszProxy) > 0)
+	if (lpszProxy)
 	{
-		lstrcpy(nid.szTip, lpszProxy);
-		lstrcpy(nid.szInfo, lpszProxy);
-	}
-	else
-	{
-		lstrcpy(nid.szInfo, szBalloon);
-		lstrcpy(nid.szTip, szTooltip);
+		nid.uFlags |= NIF_INFO|NIF_TIP;
+		if (lstrlen(lpszProxy) > 0)
+		{
+			lstrcpy(nid.szTip, lpszProxy);
+			lstrcpy(nid.szInfo, lpszProxy);
+		}
+		else
+		{
+			lstrcpy(nid.szInfo, szBalloon);
+			lstrcpy(nid.szTip, szTooltip);
+		}
 	}
 	Shell_NotifyIcon(dwMessage, &nid);
 	return TRUE;
@@ -375,7 +379,7 @@ BOOL ExecCmdline()
 	BOOL bRet = CreateProcess(NULL, szCommandLine, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi);
 	if(bRet)
 	{
-		dwChildrenPid = GetProcessId(pi.hProcess);
+		dwChildrenPid = MyGetProcessId(pi.hProcess);
 	}
 	else
 	{
@@ -452,6 +456,7 @@ void CheckMemoryLimit()
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	static const UINT WM_TASKBARCREATED = ::RegisterWindowMessage(L"TaskbarCreated");
 	int nID;
 	switch (message)
 	{
@@ -505,6 +510,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			PostQuitMessage(0);
 			break;
 		default:
+			if (message == WM_TASKBARCREATED)
+			{
+				ShowTrayIcon(NULL, NIM_ADD);
+				break;
+			}
 			return DefWindowProc(hWnd, message, wParam, lParam);
    }
    return 0;
