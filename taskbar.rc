@@ -47,14 +47,18 @@ BEGIN
     BEGIN
         BLOCK "000004b0"
         BEGIN
+            VALUE "Comments", "\0"
             VALUE "CompanyName", "goagent.org\0"
             VALUE "FileDescription", "goagent(taskbar)\0"
             VALUE "FileVersion", "1, 0, 0, 0\0"
             VALUE "InternalName", "taskbar\0"
             VALUE "LegalCopyright", "MIT License\0"
+            VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "taskbar.exe\0"
+            VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "goagent taskbar\0"
             VALUE "ProductVersion", "1, 0, 0, 0\0"
+            VALUE "SpecialBuild", "\0"
         END
     END
     BLOCK "VarFileInfo"
@@ -127,6 +131,7 @@ BEGIN
     IDS_CMDLINE             "cmd.exe"
     IDS_ENVIRONMENT         "GEVENT_RESOLVER=block\nTASKBAR_VISIBLE=0\nTASKBAR_TOOLTIP=GoAgent\nTASKBAR_TITLE=GoAgent Notify\nTASKBAR_BALLOON=GoAgent 已经启动，单击托盘图标可以最小化。\n"
     IDS_PROXYLIST           "http://127.0.0.1:8086/proxy.pac\n127.0.0.1:8087\n"
+    IDS_RASPBK              "%APPDATA%\\Microsoft\\Network\\Connections\\Pbk\n%ALLUSERSPROFILE%\\Microsoft\\Network\\Connections\\Pbk\n%ALLUSERSPROFILE%\\Application Data\\Microsoft\\Network\\Connections\\Pbk\\rasphone.pbk\n"
 END
 
 #endif    // Chinese (P.R.C.) resources

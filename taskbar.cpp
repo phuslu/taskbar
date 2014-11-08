@@ -72,6 +72,7 @@ WCHAR szTooltip[512] = L"";
 WCHAR szBalloon[512] = L"";
 WCHAR szEnvironment[1024] = L"";
 WCHAR szProxyString[2048] = L"";
+CHAR szRasPbk[4096] = "";
 WCHAR *lpProxyList[8] = {0};
 volatile DWORD dwChildrenPid;
 
@@ -110,52 +111,6 @@ static DWORD MyGetProcessId(HANDLE hProcess)
 		return pbi.UniqueProcessId;
 	}
 	return 0;
-}
-
-static LPCTSTR MyGetActiveRasConnectionName()
-{
-#ifndef RASDT_PPPoE
-	#define RASDT_PPPoE TEXT("PPPoE")
-#endif
-
-	static WCHAR szConnectionName[512] = L"";
-
-	DWORD dwCb = 0;
-	DWORD dwRet = ERROR_SUCCESS;
-	DWORD dwConnections = 0;
-	LPRASCONN lpRasConn = NULL;
-
-	memset(szConnectionName, 0, sizeof(szConnectionName[0])*sizeof(szConnectionName));
-
-	dwRet = RasEnumConnections(lpRasConn, &dwCb, &dwConnections);
-	if (dwRet == ERROR_BUFFER_TOO_SMALL)
-	{
-		lpRasConn = (LPRASCONN) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwCb);
-		if (lpRasConn == NULL)
-		{
-			wprintf(L"RasEnumConnections: HeapAlloc failed!\n");
-			return NULL;
-		}
-		lpRasConn[0].dwSize = sizeof(RASCONN);
-		dwRet = RasEnumConnections(lpRasConn, &dwCb, &dwConnections);
-		if (ERROR_SUCCESS == dwRet)
-		{
-			for (size_t i = 0; i < dwConnections; i++)
-			{
-				if((lstrcmp(lpRasConn[i].szEntryName, RASDT_Modem) == 0) ||
-					(lstrcmp(lpRasConn[i].szEntryName, RASDT_Isdn) == 0) ||
-					(lstrcmp(lpRasConn[i].szEntryName, RASDT_PPPoE)==0))
-				{
-					lstrcpy(szConnectionName, lpRasConn[i].szEntryName);
-					wprintf(L"RasEnumConnections: The RAS connections are currently active:\"%s\"\n", szConnectionName);
-				}
-			}
-		}
-		HeapFree(GetProcessHeap(), 0, lpRasConn);
-		lpRasConn = NULL;
-	}
-
-	return szConnectionName[0] ? szConnectionName : NULL;
 }
 
 BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
@@ -290,6 +245,27 @@ BOOL SetWindowsProxy(WCHAR* szProxy, const WCHAR* szProxyInterface=NULL)
 	return bReturn;
 }
 
+BOOL SetWindowsProxyForAllRasConnections(WCHAR* szProxy)
+{
+	for (LPCSTR lpRasPbk = szRasPbk; *lpRasPbk; lpRasPbk += strlen(lpRasPbk) + 1)
+	{
+		char szPath[2048] = "";
+		if (ExpandEnvironmentStringsA(lpRasPbk, szPath, sizeof(szPath)/sizeof(szPath[0])))
+		{
+			char szReturnBuffer[2048] = "";
+			if (GetPrivateProfileSectionNamesA(szReturnBuffer, sizeof(szReturnBuffer)/sizeof(szReturnBuffer[0]), szPath))
+			{
+				for(LPSTR lpSection = szReturnBuffer; *lpSection; lpSection += strlen(lpSection) + 1)
+				{
+					WCHAR szSection[64] = L"";
+					MultiByteToWideChar(CP_UTF8, 0, lpSection, -1, szSection, sizeof(szSection)/sizeof(szSection[0]));
+					SetWindowsProxy(szProxy, szSection);
+				}
+			}
+		}
+	}
+	return TRUE;
+}
 
 BOOL ShowPopupMenu()
 {
@@ -340,6 +316,15 @@ BOOL ParseProxyList()
 		pos = wcstok(NULL, sep);
 	}
 	lpProxyList[i] = 0;
+
+	
+	for (LPSTR ptr = szRasPbk; *ptr; ptr++)
+	{
+		if (*ptr == '\n')
+		{
+			*ptr++ = 0;
+		}
+	}
 	return TRUE;
 }
 
@@ -374,6 +359,7 @@ BOOL SetEenvironment()
 	LoadString(hInst, IDS_CMDLINE, szCommandLine, sizeof(szCommandLine)/sizeof(szCommandLine[0])-1);
 	LoadString(hInst, IDS_ENVIRONMENT, szEnvironment, sizeof(szEnvironment)/sizeof(szEnvironment[0])-1);
 	LoadString(hInst, IDS_PROXYLIST, szProxyString, sizeof(szProxyString)/sizeof(szEnvironment[0])-1);
+	LoadStringA(hInst, IDS_RASPBK, szRasPbk, sizeof(szRasPbk)/sizeof(szRasPbk[0])-1);
 
 	WCHAR *sep = L"\n";
 	WCHAR *pos = NULL;
@@ -502,11 +488,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				WCHAR *szProxy = lpProxyList[nID-WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE];
 				SetWindowsProxy(szProxy);
-				LPCTSTR szRasConnectionName = MyGetActiveRasConnectionName();
-				if (szRasConnectionName)
-				{
-					SetWindowsProxy(szProxy, szRasConnectionName);
-				}
+				SetWindowsProxyForAllRasConnections(szProxy);
 				ShowTrayIcon(szProxy, NIM_MODIFY);
 			}
 			break;
