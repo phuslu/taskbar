@@ -6,9 +6,12 @@
 #include <stdio.h>
 #include <wininet.h>
 #include <io.h>
+#include "ras.h"
+#include "raserror.h"
 #include "psapi.h"
 #include "resource.h"
 
+#pragma comment(lib, "rasapi32.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "advapi32.lib")
@@ -32,9 +35,9 @@
 typedef struct {
   DWORD dwOption;
   union {
-    DWORD    dwValue;
-    LPTSTR   pszValue;
-    FILETIME ftValue;
+	DWORD    dwValue;
+	LPTSTR   pszValue;
+	FILETIME ftValue;
   } Value;
 } INTERNET_PER_CONN_OPTION, *LPINTERNET_PER_CONN_OPTION;
 
@@ -109,6 +112,52 @@ static DWORD MyGetProcessId(HANDLE hProcess)
 	return 0;
 }
 
+static LPCTSTR MyGetActiveRasConnectionName()
+{
+#ifndef RASDT_PPPoE
+	#define RASDT_PPPoE TEXT("PPPoE")
+#endif
+
+	static WCHAR szConnectionName[512] = L"";
+
+	DWORD dwCb = 0;
+	DWORD dwRet = ERROR_SUCCESS;
+	DWORD dwConnections = 0;
+	LPRASCONN lpRasConn = NULL;
+
+	memset(szConnectionName, 0, sizeof(szConnectionName[0])*sizeof(szConnectionName));
+
+	dwRet = RasEnumConnections(lpRasConn, &dwCb, &dwConnections);
+	if (dwRet == ERROR_BUFFER_TOO_SMALL)
+	{
+		lpRasConn = (LPRASCONN) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, dwCb);
+		if (lpRasConn == NULL)
+		{
+			wprintf(L"RasEnumConnections: HeapAlloc failed!\n");
+			return NULL;
+		}
+		lpRasConn[0].dwSize = sizeof(RASCONN);
+		dwRet = RasEnumConnections(lpRasConn, &dwCb, &dwConnections);
+		if (ERROR_SUCCESS == dwRet)
+		{
+			for (size_t i = 0; i < dwConnections; i++)
+			{
+				if((lstrcmp(lpRasConn[0].szEntryName, RASDT_Modem) == 0) ||
+					(lstrcmp(lpRasConn[0].szEntryName, RASDT_Isdn) == 0) ||
+					(lstrcmp(lpRasConn[0].szEntryName, RASDT_PPPoE)==0))
+				{
+					lstrcpy(szConnectionName, lpRasConn[0].szEntryName);
+					wprintf(L"RasEnumConnections: The RAS connections are currently active:\"%s\"\n", szConnectionName);
+				}
+			}
+		}
+		HeapFree(GetProcessHeap(), 0, lpRasConn);
+		lpRasConn = NULL;
+	}
+
+	return szConnectionName[0] ? szConnectionName : NULL;
+}
+
 BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
 {
 	NOTIFYICONDATA nid;
@@ -154,12 +203,12 @@ BOOL DeleteTrayIcon()
 LPCTSTR GetWindowsProxy()
 {
 	static WCHAR szProxy[1024] = {0};
-    HKEY hKey;
+	HKEY hKey;
 	DWORD dwData = 0;
 	DWORD dwSize = sizeof(DWORD);
 
-    if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
-		                              L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
+	if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_CURRENT_USER,
+									  L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
 									  0,
 									  KEY_READ | 0x0200,
 									  &hKey))
@@ -187,21 +236,21 @@ LPCTSTR GetWindowsProxy()
 			RegCloseKey(hKey);
 			return szProxy;
 		}
-    }
+	}
 	return szProxy;
 }
 
 
-BOOL SetWindowsProxy(WCHAR* szProxy, WCHAR* szProxyInterface=NULL)
+BOOL SetWindowsProxy(WCHAR* szProxy, const WCHAR* szProxyInterface=NULL)
 {
 	INTERNET_PER_CONN_OPTION_LIST conn_options;
-    BOOL    bReturn;
-    DWORD   dwBufferSize = sizeof(conn_options);
+	BOOL    bReturn;
+	DWORD   dwBufferSize = sizeof(conn_options);
 
 	if (wcslen(szProxy) == 0)
 	{
 		conn_options.dwSize = dwBufferSize;
-		conn_options.pszConnection = szProxyInterface;
+		conn_options.pszConnection = (WCHAR*)szProxyInterface;
 		conn_options.dwOptionCount = 1;
 		conn_options.pOptions = (INTERNET_PER_CONN_OPTION*)malloc(sizeof(INTERNET_PER_CONN_OPTION)*conn_options.dwOptionCount);
 		conn_options.pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
@@ -210,7 +259,7 @@ BOOL SetWindowsProxy(WCHAR* szProxy, WCHAR* szProxyInterface=NULL)
 	else if (wcsstr(szProxy, L"://") != NULL)
 	{
 		conn_options.dwSize = dwBufferSize;
-		conn_options.pszConnection = szProxyInterface;
+		conn_options.pszConnection = (WCHAR*)szProxyInterface;
 		conn_options.dwOptionCount = 3;
 		conn_options.pOptions = (INTERNET_PER_CONN_OPTION*)malloc(sizeof(INTERNET_PER_CONN_OPTION)*conn_options.dwOptionCount);
 		conn_options.pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
@@ -223,7 +272,7 @@ BOOL SetWindowsProxy(WCHAR* szProxy, WCHAR* szProxyInterface=NULL)
 	else
 	{
 		conn_options.dwSize = dwBufferSize;
-		conn_options.pszConnection = szProxyInterface;
+		conn_options.pszConnection = (WCHAR*)szProxyInterface;
 		conn_options.dwOptionCount = 3;
 		conn_options.pOptions = (INTERNET_PER_CONN_OPTION*)malloc(sizeof(INTERNET_PER_CONN_OPTION)*conn_options.dwOptionCount);
 		conn_options.pOptions[0].dwOption = INTERNET_PER_CONN_FLAGS;
@@ -235,9 +284,9 @@ BOOL SetWindowsProxy(WCHAR* szProxy, WCHAR* szProxyInterface=NULL)
 	}
 
 	bReturn = InternetSetOption(NULL, INTERNET_OPTION_PER_CONNECTION_OPTION, &conn_options, dwBufferSize);
-    free(conn_options.pOptions);
-    InternetSetOption(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);
-    InternetSetOption(NULL, INTERNET_OPTION_REFRESH , NULL, 0);
+	free(conn_options.pOptions);
+	InternetSetOption(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);
+	InternetSetOption(NULL, INTERNET_OPTION_REFRESH , NULL, 0);
 	return bReturn;
 }
 
@@ -247,7 +296,7 @@ BOOL ShowPopupMenu()
 	POINT pt;
 	HMENU hSubMenu = NULL;
 	LPCTSTR lpCurrentProxy = GetWindowsProxy();
-	if (lpProxyList[1] != NULL) 
+	if (lpProxyList[1] != NULL)
 	{
 		hSubMenu = CreatePopupMenu();
 		for (int i = 0; lpProxyList[i]; i++)
@@ -328,7 +377,7 @@ BOOL SetEenvironment()
 
 	WCHAR *sep = L"\n";
 	WCHAR *pos = NULL;
-    WCHAR *token = wcstok(szEnvironment, sep);
+	WCHAR *token = wcstok(szEnvironment, sep);
 	while(token != NULL)
 	{
 		if (pos = wcschr(token, L'='))
@@ -453,6 +502,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				WCHAR *szProxy = lpProxyList[nID-WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE];
 				SetWindowsProxy(szProxy);
+				LPCTSTR szRasConnectionName = MyGetActiveRasConnectionName();
+				if (szRasConnectionName)
+				{
+					SetWindowsProxy(szProxy, szRasConnectionName);
+				}
 				ShowTrayIcon(szProxy, NIM_MODIFY);
 			}
 			break;
