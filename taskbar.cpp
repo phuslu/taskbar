@@ -142,11 +142,11 @@ static LPCTSTR MyGetActiveRasConnectionName()
 		{
 			for (size_t i = 0; i < dwConnections; i++)
 			{
-				if((lstrcmp(lpRasConn[0].szEntryName, RASDT_Modem) == 0) ||
-					(lstrcmp(lpRasConn[0].szEntryName, RASDT_Isdn) == 0) ||
-					(lstrcmp(lpRasConn[0].szEntryName, RASDT_PPPoE)==0))
+				if((lstrcmp(lpRasConn[i].szEntryName, RASDT_Modem) == 0) ||
+					(lstrcmp(lpRasConn[i].szEntryName, RASDT_Isdn) == 0) ||
+					(lstrcmp(lpRasConn[i].szEntryName, RASDT_PPPoE)==0))
 				{
-					lstrcpy(szConnectionName, lpRasConn[0].szEntryName);
+					lstrcpy(szConnectionName, lpRasConn[i].szEntryName);
 					wprintf(L"RasEnumConnections: The RAS connections are currently active:\"%s\"\n", szConnectionName);
 				}
 			}
