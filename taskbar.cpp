@@ -252,15 +252,26 @@ BOOL SetWindowsProxyForAllRasConnections(WCHAR* szProxy)
 		char szPath[2048] = "";
 		if (ExpandEnvironmentStringsA(lpRasPbk, szPath, sizeof(szPath)/sizeof(szPath[0])))
 		{
-			char szReturnBuffer[2048] = "";
-			if (GetPrivateProfileSectionNamesA(szReturnBuffer, sizeof(szReturnBuffer)/sizeof(szReturnBuffer[0]), szPath))
+			char line[2048] = "";
+			int length = 0;
+			FILE * fp = fopen(szPath, "r");
+			if (fp != NULL)
 			{
-				for(LPSTR lpSection = szReturnBuffer; *lpSection; lpSection += strlen(lpSection) + 1)
+				while (!feof(fp))
 				{
-					WCHAR szSection[64] = L"";
-					MultiByteToWideChar(CP_UTF8, 0, lpSection, -1, szSection, sizeof(szSection)/sizeof(szSection[0]));
-					SetWindowsProxy(szProxy, szSection);
+					if (fgets(line, sizeof(line)/sizeof(line[0])-1, fp))
+					{
+						length = strlen(line);
+						if (length > 3 && line[0] == '[' && line[length-2] == ']')
+						{
+							line[length-2] = 0;
+							WCHAR szSection[64] = L"";
+							MultiByteToWideChar(CP_UTF8, 0, line+1, -1, szSection, sizeof(szSection)/sizeof(szSection[0]));
+							SetWindowsProxy(szProxy, szSection);
+						}
+					}
 				}
+				fclose(fp);
 			}
 		}
 	}
