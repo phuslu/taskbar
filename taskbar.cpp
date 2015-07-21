@@ -393,6 +393,21 @@ BOOL SetEenvironment()
 	return TRUE;
 }
 
+BOOL WINAPI ConsoleHandler(DWORD CEvent)
+{
+	char mesg[128];
+
+	switch(CEvent)
+	{
+	case CTRL_LOGOFF_EVENT:
+	case CTRL_SHUTDOWN_EVENT:
+	case CTRL_CLOSE_EVENT:
+		SendMessage(hWnd, WM_CLOSE, NULL, NULL);
+		break;
+	}
+	return TRUE;
+}
+
 BOOL CreateConsole()
 {
 	WCHAR szVisible[BUFSIZ] = L"";
@@ -410,6 +425,12 @@ BOOL CreateConsole()
 	else
 	{
 		SetForegroundWindow(hConsole);
+	}
+	
+	if (SetConsoleCtrlHandler((PHANDLER_ROUTINE)ConsoleHandler,TRUE)==FALSE)
+	{
+		printf("Unable to install handler!\n");
+		return FALSE;
 	}
 
 	return TRUE;
@@ -502,6 +523,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				SetWindowsProxyForAllRasConnections(szProxy);
 				ShowTrayIcon(szProxy, NIM_MODIFY);
 			}
+			break;
+		case WM_CLOSE:
+			DeleteTrayIcon();
+			PostQuitMessage(0);
 			break;
 		case WM_DESTROY:
 			PostQuitMessage(0);
