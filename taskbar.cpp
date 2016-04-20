@@ -113,6 +113,26 @@ static DWORD MyGetProcessId(HANDLE hProcess)
 	return 0;
 }
 
+
+static BOOL MyEndTask(HANDLE hProcess, BOOL fShutDown, BOOL fForce)
+{
+	// https://msdn.microsoft.com/en-us/library/ms633492(VS.85).aspx
+	typedef DWORD (WINAPI *pfnET)(HANDLE, BOOL, BOOL);
+
+	static int first = 1;
+	static pfnET pfnEndTask;
+	if (first)
+	{
+		first = 0;
+		pfnEndTask = (pfnET)GetProcAddress(
+			GetModuleHandleW(L"User32.DLL"), "EndTask");
+
+	}
+	if (pfnEndTask)
+		return pfnEndTask(hProcess, fShutDown, fForce);
+	return FALSE;
+}
+
 BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
 {
 	NOTIFYICONDATA nid;
@@ -395,8 +415,6 @@ BOOL SetEenvironment()
 
 BOOL WINAPI ConsoleHandler(DWORD CEvent)
 {
-	char mesg[128];
-
 	switch(CEvent)
 	{
 	case CTRL_LOGOFF_EVENT:
@@ -461,7 +479,7 @@ BOOL ExecCmdline()
 
 BOOL ReloadCmdline()
 {
-	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwChildrenPid);
+	HANDLE hProcess = OpenProcess(SYNCHRONIZE|PROCESS_TERMINATE, FALSE, dwChildrenPid);
 	if (hProcess)
 	{
 		TerminateProcess(hProcess, 0);
