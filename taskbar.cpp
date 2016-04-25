@@ -114,23 +114,11 @@ static DWORD MyGetProcessId(HANDLE hProcess)
 }
 
 
-static BOOL MyEndTask(HANDLE hProcess, BOOL fShutDown, BOOL fForce)
+static BOOL MyEndTask(DWORD pid)
 {
-	// https://msdn.microsoft.com/en-us/library/ms633492(VS.85).aspx
-	typedef DWORD (WINAPI *pfnET)(HANDLE, BOOL, BOOL);
-
-	static int first = 1;
-	static pfnET pfnEndTask;
-	if (first)
-	{
-		first = 0;
-		pfnEndTask = (pfnET)GetProcAddress(
-			GetModuleHandleW(L"User32.DLL"), "EndTask");
-
-	}
-	if (pfnEndTask)
-		return pfnEndTask(hProcess, fShutDown, fForce);
-	return FALSE;
+	WCHAR szCmd[1024] = {0};
+	wsprintf(szCmd, L"taskkill /f /pid %d", pid);
+	return _wsystem(szCmd) == 0;
 }
 
 BOOL ShowTrayIcon(LPCTSTR lpszProxy, DWORD dwMessage=NIM_ADD)
@@ -479,13 +467,15 @@ BOOL ExecCmdline()
 
 BOOL ReloadCmdline()
 {
-	HANDLE hProcess = OpenProcess(SYNCHRONIZE|PROCESS_TERMINATE, FALSE, dwChildrenPid);
-	if (hProcess)
-	{
-		TerminateProcess(hProcess, 0);
-	}
+	//HANDLE hProcess = OpenProcess(SYNCHRONIZE|PROCESS_TERMINATE, FALSE, dwChildrenPid);
+	//if (hProcess)
+	//{
+	//	TerminateProcess(hProcess, 0);
+	//}
 	ShowWindow(hConsole, SW_SHOW);
 	SetForegroundWindow(hConsole);
+	wprintf(L"\n\n");
+	MyEndTask(dwChildrenPid);
 	wprintf(L"\n\n");
 	Sleep(200);
 	ExecCmdline();
