@@ -290,6 +290,7 @@ BOOL ShowPopupMenu()
 {
 	POINT pt;
 	HMENU hSubMenu = NULL;
+	BOOL isZHCN = GetUserDefaultLCID() == 2052;
 	LPCTSTR lpCurrentProxy = GetWindowsProxy();
 	if (lpProxyList[1] != NULL)
 	{
@@ -297,20 +298,20 @@ BOOL ShowPopupMenu()
 		for (int i = 0; lpProxyList[i]; i++)
 		{
 			UINT uFlags = wcscmp(lpProxyList[i], lpCurrentProxy) == 0 ? MF_STRING | MF_CHECKED : MF_STRING;
-			LPCTSTR lpText = wcslen(lpProxyList[i]) ? lpProxyList[i] : L"\x7981\x7528\x4ee3\x7406";
+			LPCTSTR lpText = wcslen(lpProxyList[i]) ? lpProxyList[i] : ( isZHCN ? L"\x7981\x7528\x4ee3\x7406" : L"Disable Proxy");
 			AppendMenu(hSubMenu, uFlags, WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE+i, lpText);
 		}
 	}
 
 	HMENU hMenu = CreatePopupMenu();
-	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_SHOW, L"\x663e\x793a");
-	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_HIDE, L"\x9690\x85cf");
+	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_SHOW, ( isZHCN ? L"\x663e\x793a" : L"Show") );
+	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_HIDE, ( isZHCN ? L"\x9690\x85cf" : L"Hide") );
 	if (hSubMenu != NULL)
 	{
-		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, L"\x8bbe\x7f6e IE \x4ee3\x7406");
+		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, ( isZHCN ? L"\x8bbe\x7f6e IE \x4ee3\x7406" : L"IE Proxy Settings") );
 	}
-	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_RELOAD, L"\x91cd\x65b0\x8f7d\x5165");
-	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_EXIT,   L"\x9000\x51fa");
+	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_RELOAD, ( isZHCN ? L"\x91cd\x65b0\x8f7d\x5165" : L"Reload") );
+	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_EXIT,   ( isZHCN ? L"\x9000\x51fa" : L"Exit") );
 	GetCursorPos(&pt);
 	TrackPopupMenu(hMenu, TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
 	PostMessage(hWnd, WM_NULL, 0, 0);
@@ -336,7 +337,7 @@ BOOL ParseProxyList()
 	}
 	lpProxyList[i] = 0;
 
-	
+
 	for (LPSTR ptr = szRasPbk; *ptr; ptr++)
 	{
 		if (*ptr == '\n')
@@ -432,7 +433,7 @@ BOOL CreateConsole()
 	{
 		SetForegroundWindow(hConsole);
 	}
-	
+
 	if (SetConsoleCtrlHandler((PHANDLER_ROUTINE)ConsoleHandler,TRUE)==FALSE)
 	{
 		printf("Unable to install handler!\n");
