@@ -458,7 +458,7 @@ BOOL ExecCmdline()
 	else
 	{
 		wprintf(L"ExecCmdline \"%s\" failed!\n", szCommandLine);
-		MessageBox(NULL, szCommandLine, L"Error: \x6267\x884c\x547d\x4ee4\x5931\x8d25!", MB_OK);
+		MessageBox(NULL, szCommandLine, L"Error: Cannot execute!", MB_OK);
 		ExitProcess(0);
 	}
 	CloseHandle(pi.hThread);

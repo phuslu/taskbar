@@ -6,14 +6,16 @@
 --------------------Configuration: taskbar - Win32 Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP448.tmp" with contents
+Creating command line "rc.exe /l 0x409 /fo"Release/taskbar.res" /d "NDEBUG" "D:\Develop\taskbar\taskbar.rc"" 
+Creating temporary file "C:\Users\phuslu\AppData\Local\Temp\RSP303B.tmp" with contents
 [
 /nologo /MD /W3 /GX /O1 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_UNICODE" /D "UNICODE" /Fo"Release/" /Fd"Release/" /FD /c 
 "D:\Develop\taskbar\taskbar.cpp"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP448.tmp" 
-Creating command line "link.exe kernel32.lib user32.lib /nologo /subsystem:windows /pdb:none /machine:I386 /out:"Release/goagent.exe"  .\Release\taskbar.obj .\Release\taskbar.res "
+Creating command line "cl.exe @C:\Users\phuslu\AppData\Local\Temp\RSP303B.tmp" 
+Creating command line "link.exe kernel32.lib user32.lib /nologo /subsystem:windows /pdb:none /machine:I386 /out:"Release/goproxy-gui.exe"  .\Release\taskbar.obj .\Release\taskbar.res "
 <h3>Output Window</h3>
+Compiling resources...
 Compiling...
 taskbar.cpp
 Linking...
@@ -21,7 +23,7 @@ Linking...
 
 
 <h3>Results</h3>
-goagent.exe - 0 error(s), 0 warning(s)
+goproxy-gui.exe - 0 error(s), 0 warning(s)
 </pre>
 </body>
 </html>
