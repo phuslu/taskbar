@@ -290,7 +290,7 @@ BOOL ShowPopupMenu()
 {
 	POINT pt;
 	HMENU hSubMenu = NULL;
-	BOOL isZHCN = GetUserDefaultLCID() == 2052;
+	BOOL isZHCN = GetSystemDefaultLCID() == 2052;
 	LPCTSTR lpCurrentProxy = GetWindowsProxy();
 	if (lpProxyList[1] != NULL)
 	{
@@ -308,7 +308,7 @@ BOOL ShowPopupMenu()
 	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_HIDE, ( isZHCN ? L"\x9690\x85cf" : L"Hide") );
 	if (hSubMenu != NULL)
 	{
-		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, ( isZHCN ? L"\x8bbe\x7f6e IE \x4ee3\x7406" : L"IE Proxy Settings") );
+		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, ( isZHCN ? L"\x8bbe\x7f6e IE \x4ee3\x7406" : L"Set IE Proxy") );
 	}
 	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_RELOAD, ( isZHCN ? L"\x91cd\x65b0\x8f7d\x5165" : L"Reload") );
 	AppendMenu(hMenu, MF_STRING, WM_TASKBARNOTIFY_MENUITEM_EXIT,   ( isZHCN ? L"\x9000\x51fa" : L"Exit") );
