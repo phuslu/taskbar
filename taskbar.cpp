@@ -298,7 +298,7 @@ BOOL ShowPopupMenu()
 		for (int i = 0; lpProxyList[i]; i++)
 		{
 			UINT uFlags = wcscmp(lpProxyList[i], lpCurrentProxy) == 0 ? MF_STRING | MF_CHECKED : MF_STRING;
-			LPCTSTR lpText = wcslen(lpProxyList[i]) ? lpProxyList[i] : ( isZHCN ? L"\x7981\x7528\x4ee3\x7406" : L"Disable Proxy");
+			LPCTSTR lpText = wcslen(lpProxyList[i]) ? lpProxyList[i] : ( isZHCN ? L"\x7981\x7528\x4ee3\x7406" : L"<None>");
 			AppendMenu(hSubMenu, uFlags, WM_TASKBARNOTIFY_MENUITEM_PROXYLIST_BASE+i, lpText);
 		}
 	}
