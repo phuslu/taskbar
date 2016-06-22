@@ -440,6 +440,20 @@ BOOL CreateConsole()
 		return FALSE;
 	}
 
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	if (GetConsoleScreenBufferInfo(GetStdHandle(STD_ERROR_HANDLE), &csbi))
+	{
+		COORD size = csbi.dwSize;
+		if (size.Y < 2048)
+		{
+			size.Y = 2048;
+			if (!SetConsoleScreenBufferSize(GetStdHandle(STD_ERROR_HANDLE), size))
+			{
+				printf("Unable to set console screen buffer size!\n");
+			}
+		}
+	}
+
 	return TRUE;
 }
 
