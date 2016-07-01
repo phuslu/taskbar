@@ -480,6 +480,30 @@ BOOL ExecCmdline()
 	return TRUE;
 }
 
+BOOL TryDeleteUpdateFiles()
+{
+	WIN32_FIND_DATA FindFileData;
+	HANDLE hFind;
+
+	hFind = FindFirstFile(L"~*.tmp", &FindFileData);
+	if (hFind == INVALID_HANDLE_VALUE)
+	{
+		return TRUE;
+	}
+
+	do
+	{
+		DeleteFile(FindFileData.cFileName);
+		if (!FindNextFile(hFind, &FindFileData))
+		{
+			break;
+		}
+	} while(TRUE);
+	FindClose(hFind);
+
+	return TRUE;
+}
+
 BOOL ReloadCmdline()
 {
 	//HANDLE hProcess = OpenProcess(SYNCHRONIZE|PROCESS_TERMINATE, FALSE, dwChildrenPid);
@@ -601,6 +625,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR lpCmdLine, int nCmd
 	CreateConsole();
 	ExecCmdline();
 	ShowTrayIcon(GetWindowsProxy());
+	TryDeleteUpdateFiles();
 	while (GetMessage(&msg, NULL, 0, 0))
 	{
 		TranslateMessage(&msg);
